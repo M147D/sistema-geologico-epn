@@ -1,0 +1,6 @@
+@Servidor_Sistema_Geologia_HostAddress = http://localhost:5095
+
+GET {{Servidor_Sistema_Geologia_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
