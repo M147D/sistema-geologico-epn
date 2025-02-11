@@ -1,6 +1,6 @@
 ﻿namespace Servidor_Sistema_Geologia.DTO
 {
-	public class RocaDto : ElementoGeologicoDto
+	public class RocaDto : ElementoGeologicoReadDto
 	{
 		public string? TipoRoca { get; set; }
 

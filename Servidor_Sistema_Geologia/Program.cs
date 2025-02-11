@@ -3,7 +3,6 @@ using Servidor_Sistema_Geologia.Application;
 using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Infrastructure;
-using Servidor_Sistema_Geologia.Infrastructure.Profiles;
 using Servidor_Sistema_Geologia.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,7 +19,7 @@ builder.Services.AddDbContext<GestorGeologia>(options =>
 	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Servicios
-builder.Services.AddScoped<IElementoService<Fosil, FosilDto>, FosilService>();
+builder.Services.AddScoped<IElementoService<Fosil, FosilReadDto ,FosilCreateDto>, FosilService>();
 
 // Perfiles
 builder.Services.AddAutoMapper(typeof(Program));

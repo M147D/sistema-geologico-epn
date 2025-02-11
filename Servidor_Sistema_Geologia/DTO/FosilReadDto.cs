@@ -1,6 +1,6 @@
 ﻿namespace Servidor_Sistema_Geologia.DTO
 {
-	public class FosilDto : ElementoGeologicoDto
+	public class FosilReadDto : ElementoGeologicoReadDto
 	{
 		public string? Especie { get; set; }
 

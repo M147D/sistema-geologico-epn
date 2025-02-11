@@ -4,16 +4,18 @@ using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.Models;
 using Servidor_Sistema_Geologia.Application;
 using Servidor_Sistema_Geologia.DTO;
+using Servidor_Sistema_Geologia.DTO.Create;
 
 namespace Servidor_Sistema_Geologia.Infrastructure
 {
-	public class ElementoGeologicoService<TElemento, TDto> : BaseElementoGeologicoService, IElementoService<TElemento, TDto>
+	public class ElementoGeologicoService<TElemento, TReadDto, TCreateDto> : BaseElementoGeologicoService, IElementoService<TElemento, TReadDto, TCreateDto>
 		where TElemento : ElementoGeologico, new()
-		where TDto : ElementoGeologicoDto
+		where TReadDto : ElementoGeologicoReadDto, new()
+		where TCreateDto : ElementoGeologicoCreateDto, new()
 	{
 		public ElementoGeologicoService(GestorGeologia db) : base(db) { }
 
-		public async Task<TDto> GetByIdAsync(int id)
+		public async Task<TReadDto> GetByIdAsync(int id)
 		{
 			var elemento = await _db.Set<TElemento>()
 				.Include(e => e.Fotos)
@@ -27,7 +29,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return ConvertToDto(elemento);
 		}
 
-		public async Task<IEnumerable<TDto>> GetAllAsync()
+		public async Task<IEnumerable<TReadDto>> GetAllAsync()
 		{
 			var elementos = await _db.Set<TElemento>()
 				.Include(e => e.Fotos)
@@ -41,7 +43,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elementos.Select(e => ConvertToDto(e));
 		}
 
-		public async Task<TElemento> UpdateAsync(int id, TDto elementoDto)
+		public async Task<TElemento> UpdateAsync(int id, TCreateDto elementoDto)
 		{
 			var elemento = await _db.Set<TElemento>()
 				.Include(e => e.Fotos)
@@ -74,8 +76,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elemento;
 		}
 
-
-		public async Task<TElemento> CreateElementoConAccesoAsync(TDto elementoDto, int usuarioId)
+		public async Task<TElemento> CreateElementoConAccesoAsync(TCreateDto elementoDto, int usuarioId)
 		{
 			var acceso = new Acceso
 			{
@@ -96,12 +97,10 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elemento;
 		}
 
-		public async Task<TElemento> CreateAsync(TDto elementoDto)
+		public async Task<TElemento> CreateAsync(TCreateDto elementoDto)
 		{
 			var ubicacion = elementoDto.Ubicacion != null ? await ObtenerOcrearUbicacionAsync(elementoDto.Ubicacion) : null;
-
 			var estado = elementoDto.EstadoElemento != null ? await ObtenerOcrearEstadoAsync(elementoDto.EstadoElemento) : null;
-
 			var elemento = ConvertToEntity(elementoDto);
 
 			elemento.UbicacionId = ubicacion?.Id;
@@ -136,9 +135,9 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			await _db.SaveChangesAsync();
 		}
 
-		protected virtual TDto ConvertToDto(TElemento elemento) => throw new NotImplementedException();
-		protected virtual TElemento ConvertToEntity(TDto dto) => throw new NotImplementedException();
-		protected virtual void UpdateEntity(TElemento elemento, TDto dto) => throw new NotImplementedException();
-
+		// Métodos de conversión:
+		protected virtual TReadDto ConvertToDto(TElemento elemento) => throw new NotImplementedException();
+		protected virtual TElemento ConvertToEntity(TCreateDto dto) => throw new NotImplementedException();
+		protected virtual void UpdateEntity(TElemento elemento, TCreateDto dto) => throw new NotImplementedException();
 	}
 }

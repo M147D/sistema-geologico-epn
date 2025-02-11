@@ -14,7 +14,7 @@
 
 		public byte[]? Imagen { get; set; }
 
-		public ElementoGeologicoDto? ElementoGeologico { get; set; }
+		public ElementoGeologicoReadDto? ElementoGeologico { get; set; }
 
 		public GaleriaElementoGeologicoDto? Galeria { get; set; }
 	}
