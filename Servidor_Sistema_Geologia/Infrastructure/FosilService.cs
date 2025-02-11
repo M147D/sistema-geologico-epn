@@ -5,7 +5,7 @@ using Servidor_Sistema_Geologia.Models;
 
 namespace Servidor_Sistema_Geologia.Infrastructure
 {
-	public class FosilService : ElementoGeologicoService<Fosil, FosilDto>
+	public class FosilService : ElementoGeologicoService<Fosil, FosilReadDto, FosilCreateDto>
 	{
 		private readonly IMapper _mapper;
 
@@ -14,19 +14,19 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			_mapper = mapper;
 		}
 
-		protected override FosilDto ConvertToDto(Fosil fosil)
+		protected override FosilReadDto ConvertToDto(Fosil fosil)
 		{
-			return _mapper.Map<FosilDto>(fosil);
+			return _mapper.Map<FosilReadDto>(fosil);
 		}
 
-		protected override Fosil ConvertToEntity(FosilDto dto)
+		protected override Fosil ConvertToEntity(FosilCreateDto dto)
 		{
 			return _mapper.Map<Fosil>(dto);
 		}
 
-		protected override void UpdateEntity(Fosil fosil, FosilDto dto)
+		protected override void UpdateEntity(Fosil fosil, FosilCreateDto dto)
 		{
-			_mapper.Map(dto, fosil); // Aplica los cambios del DTO en la entidad existente.
+			_mapper.Map(dto, fosil);
 		}
 	}
 }

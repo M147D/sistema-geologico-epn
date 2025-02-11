@@ -9,13 +9,13 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 		public MappingProfile()
 		{
 			// Mapeo de Fosil a FosilDto
-			CreateMap<Fosil, FosilDto>()
+			CreateMap<Fosil, FosilReadDto>()
 				.ForMember(dest => dest.Fotos, opt => opt.MapFrom(src => src.Fotos.Select(f => new FotoElementoDto { Imagen = f.Imagen }).ToList()))
 				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
 				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
 
 			// Mapeo de FosilDto a Fosil
-			CreateMap<FosilDto, Fosil>()
+			CreateMap<FosilCreateDto, Fosil>()
 				.ForMember(dest => dest.Fotos, opt => opt.Ignore()) // Ignorar si no quieres sobrescribir
 				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore()) // Puedes configurarlo según tu lógica
 				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore());

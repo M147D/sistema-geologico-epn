@@ -6,7 +6,7 @@
 
 		public string? DetalleGrupo { get; set; }
 
-		public ElementoGeologicoDto? ElementoGeologico { get; set; }
+		public ElementoGeologicoReadDto? ElementoGeologico { get; set; }
 
 		public List<FotoElementoDto> Fotos { get; set; } = new List<FotoElementoDto>();
 	}
