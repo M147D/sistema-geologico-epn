@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Models;
+using Servidor_Sistema_Geologia.Constants;
 
 namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 {
@@ -9,22 +10,43 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 		public MappingProfile()
 		{
 			// Mapeo de Fosil a FosilDto
-			CreateMap<Fosil, FosilReadDto>()
-				.ForMember(dest => dest.Fotos, opt => opt.MapFrom(src => src.Fotos.Select(f => new FotoElementoDto { Imagen = f.Imagen }).ToList()))
-				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
-				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
+			CreateMap<Fosil, FosilDto>()
+				.ForMember(dest => dest.Fotos, opt => opt.MapFrom(src => src.Galeria != null ? src.Galeria.Fotos : null))
+				.ForMember(dest => dest.Galeria, opt => opt.MapFrom(src => src.Galeria));
 
 			// Mapeo de FosilDto a Fosil
-			CreateMap<FosilCreateDto, Fosil>()
-				.ForMember(dest => dest.Fotos, opt => opt.Ignore()) // Ignorar si no quieres sobrescribir
-				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore()) // Puedes configurarlo según tu lógica
-				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore());
+			CreateMap<FosilDto, Fosil>()
+				.ForPath(dest => dest.Galeria, opt => opt.Ignore());
 
-			// Mapeo de Ubicacion a UbicacionDto y viceversa
+			// Mapeo de Roca a RocaDto
+			CreateMap<Roca, RocaDto>()
+				.ForMember(dest => dest.Fotos, opt => opt.MapFrom(src => src.Galeria != null ? src.Galeria.Fotos : null))
+				.ForMember(dest => dest.Galeria, opt => opt.MapFrom(src => src.Galeria));
+
+			// Mapeo de RocaDto a Roca
+			CreateMap<RocaDto, Roca>()
+				.ForPath(dest => dest.Galeria, opt => opt.Ignore());
+
+			// Mapeo de otras entidades
 			CreateMap<Ubicacion, UbicacionDto>().ReverseMap();
 			CreateMap<Pais, PaisDto>().ReverseMap();
 			CreateMap<Provincia, ProvinciaDto>().ReverseMap();
-			CreateMap<EstadoElemento, EstadoElementoDto>().ReverseMap();
+
+			// Mapeo de EstadoElemento a EstadoElementoDto y viceversa
+			CreateMap<EstadoElemento, EstadoElementoDto>()
+				.ForMember(dest => dest.DescripcionEstado, opt => opt.MapFrom(src => src.DescripcionEstado.ToString()));
+
+			CreateMap<EstadoElementoDto, EstadoElemento>()
+				.ForMember(dest => dest.DescripcionEstado, opt => opt.MapFrom(src =>
+					Enum.TryParse<EstadosElemento>(src.DescripcionEstado, out var estado)
+						? estado
+						: EstadosElemento.Creado));
+
+			// Mapeo de GaleriaElementoGeologico a GaleriaElementoGeologicoDto y viceversa
+			CreateMap<GaleriaElementoGeologico, GaleriaElementoGeologicoDto>().ReverseMap();
+
+			// Mapeo de FotoElemento a FotoElementoDto y viceversa
+			CreateMap<FotoElemento, FotoElementoDto>().ReverseMap();
 		}
 	}
 }

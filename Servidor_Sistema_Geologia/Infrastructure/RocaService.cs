@@ -5,9 +5,9 @@ using Servidor_Sistema_Geologia.Models;
 
 namespace Servidor_Sistema_Geologia.Infrastructure
 {
-	public class FosilService : ElementoGeologicoService<Fosil, FosilDto, FosilDto>
+	public class RocaService : ElementoGeologicoService<Roca, RocaDto, RocaDto>
 	{
-		public FosilService(GestorSistemaGeologia db, IMapper mapper) : base(db, mapper)
+		public RocaService(GestorSistemaGeologia db, IMapper mapper) : base(db, mapper)
 		{
 			// La lógica de mapeo ahora se maneja en la clase base
 		}

@@ -1,4 +1,6 @@
-﻿namespace Servidor_Sistema_Geologia.DTO
+﻿using Servidor_Sistema_Geologia.Constants;
+
+namespace Servidor_Sistema_Geologia.DTO
 {
 	public class UsuarioDto
 	{
@@ -10,6 +12,8 @@
 
 		public string? NombreUsuario { get; set; }
 
-		public string? CorreoUsuario { get; set; }
+		public string? Email { get; set; }
+
+		public RolUsuario Rol { get; set; }
 	}
 }

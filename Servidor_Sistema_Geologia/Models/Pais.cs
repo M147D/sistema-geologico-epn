@@ -12,5 +12,7 @@ namespace Servidor_Sistema_Geologia.Models
 		public string? NombrePais { get; set; }
 
 		public List<Provincia> Provincias { get; } = new List<Provincia>();
+
+		public List<Ubicacion> Ubicaciones { get; } = new List<Ubicacion>();
 	}
 }

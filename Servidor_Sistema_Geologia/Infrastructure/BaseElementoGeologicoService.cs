@@ -7,9 +7,9 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 {
 	public abstract class BaseElementoGeologicoService
 	{
-		protected GestorGeologia _db;
+		protected GestorSistemaGeologia _db;
 
-		protected BaseElementoGeologicoService(GestorGeologia db)
+		protected BaseElementoGeologicoService(GestorSistemaGeologia db)
 		{
 			_db = db;
 		}
@@ -104,7 +104,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 					DescripcionEspecifica = fotoDto.DescripcionEspecifica,
 					Etiquetas = fotoDto.Etiquetas,
 					Imagen = fotoDto.Imagen,
-					ElementoGeologicoId = elementoId,
 					GaleriaElementosGeologicoId = galeria.Id
 				};
 
