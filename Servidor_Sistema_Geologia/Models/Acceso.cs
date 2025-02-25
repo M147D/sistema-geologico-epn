@@ -12,9 +12,9 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public int? ElementoGeologicoId { get; set; }
 
-		public DateTime FechaAcceso { get; set; }
+		public DateTime? FechaAcceso { get; set; }
 
-		public AccionesUsuario Accion { get; set; }
+		public AccionesUsuario? Accion { get; set; }
 
 		public Usuario? Usuario { get; set; }
 

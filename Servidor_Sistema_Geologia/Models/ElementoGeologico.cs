@@ -11,13 +11,15 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public int? UbicacionId { get; set; }
 
+		public int? GaleriaElementosGeologicoId { get; set; }
+
 		public string? Nombre { get; set; }
 
 		public int? Edad { get; set; }
 
 		public string? Donante { get; set; }
 
-		public int FechaIngreso { get; set; }
+		public int? FechaIngreso { get; set; }
 
 		public string? Codigo { get; set; }
 
@@ -33,6 +35,6 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public EstadoElemento? EstadoElemento { get; set; }
 
-		public List<FotoElemento> Fotos { get; set; } = new List<FotoElemento>();
+		public GaleriaElementoGeologico? Galeria { get; set; }
 	}
 }

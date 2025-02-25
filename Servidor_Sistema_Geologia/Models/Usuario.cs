@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Servidor_Sistema_Geologia.Constants;
+﻿using Servidor_Sistema_Geologia.Constants;
+using System.ComponentModel.DataAnnotations;
 
 namespace Servidor_Sistema_Geologia.Models
 {
@@ -14,7 +14,7 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public string? NombreUsuario { get; set; }
 
-		public string? CorreoUsuario { get; set; }
+		public string? Email { get; set; }
 
 		public RolUsuario Rol { get; set; }
 

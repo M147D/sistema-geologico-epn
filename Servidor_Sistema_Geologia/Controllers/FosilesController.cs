@@ -1,25 +1,27 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Servidor_Sistema_Geologia.Models;
 using Servidor_Sistema_Geologia.DTO;
-using Servidor_Sistema_Geologia.Application; // Asegúrate de tener la referencia a tu servicio
+using Servidor_Sistema_Geologia.Application;
 
 namespace Servidor_Sistema_Geologia.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
-	public class FosilsController : ControllerBase
+	public class FosilesController : ControllerBase
 	{
-        private readonly IElementoService<Fosil, FosilReadDto, FosilCreateDto> _fosilService;
+        private readonly IElementoService<Fosil, FosilDto, FosilDto> _fosilService;
 
 		// Constructor que recibe el servicio en lugar del contexto
-        public FosilsController(IElementoService<Fosil, FosilReadDto, FosilCreateDto> fosilService)
+        public FosilesController(IElementoService<Fosil, FosilDto, FosilDto> fosilService)
 		{
 			_fosilService = fosilService ?? throw new ArgumentNullException(nameof(fosilService));
 		}
 
 		// GET: api/Fosiles
 		[HttpGet]
-		public async Task<ActionResult<IEnumerable<FosilCreateDto>>> GetFosiles()
+		[Authorize(Roles = "Free")]
+		public async Task<ActionResult<IEnumerable<FosilDto>>> GetFosiles()
 		{
 			// Usamos el servicio para obtener la lista de fósiles
 			var fosiles = await _fosilService.GetAllAsync();
@@ -28,7 +30,8 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// GET: api/Fosiles/5
 		[HttpGet("{id}")]
-		public async Task<ActionResult<FosilCreateDto>> GetFosil(int id)
+		[Authorize(Roles = "Free")]
+		public async Task<ActionResult<FosilDto>> GetFosil(int id)
 		{
 			var fosil = await _fosilService.GetByIdAsync(id);
 
@@ -42,7 +45,8 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// PUT: api/Fosiles/5
 		[HttpPut("{id}")]
-		public async Task<IActionResult> PutFosil(int id, FosilCreateDto fosilDto)
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> PutFosil(int id, FosilDto fosilDto)
 		{
 			if (id != fosilDto.Id)
 			{
@@ -56,7 +60,8 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// POST: api/Fosiles
 		[HttpPost]
-		public async Task<ActionResult<FosilCreateDto>> PostFosil(FosilCreateDto fosilDto)
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<FosilDto>> PostFosil(FosilDto fosilDto)
 		{
 			var fosilCreado = await _fosilService.CreateElementoConAccesoAsync(fosilDto, fosilDto.UsuarioId);
 
@@ -65,6 +70,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// DELETE: api/Fosiles/5
 		[HttpDelete("{id}")]
+		[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> DeleteFosil(int id)
 		{
 			await _fosilService.DeleteAsync(id);

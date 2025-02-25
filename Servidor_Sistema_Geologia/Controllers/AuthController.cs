@@ -1,74 +1,66 @@
 ﻿using Google.Apis.Auth;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Servidor_Sistema_Geologia.Constants;
+using Servidor_Sistema_Geologia.Models;
+using Servidor_Sistema_Geologia.DAL;
+using Microsoft.EntityFrameworkCore;
 
-namespace Servidor_Sistema_Geologia.Controllers
+[Route("api/auth")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-	[Route("api/auth")]
-	[ApiController]
-	public class AuthController : ControllerBase
+	private readonly GestorSistemaGeologia _context;
+
+	public AuthController(GestorSistemaGeologia context)
 	{
-		private readonly IConfiguration _configuration;
+		_context = context;
+	}
 
-		public AuthController(IConfiguration configuration)
+	[HttpPost("login/google")]
+	public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+	{
+		try
 		{
-			_configuration = configuration;
-		}
+			var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token);
+			var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == payload.Email);
 
-		// POST: api/auth/login
-		[HttpPost("login")]
-		public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
-		{
-			// Validación del token de GIS
-			try
+			if (user == null)
 			{
-				var payload = await GoogleJsonWebSignature.ValidateAsync(loginRequest.Email
-					, new GoogleJsonWebSignature.ValidationSettings
+				user = new Usuario
 				{
-					Audience = new[] { _configuration["Google:ClientId"] }
-				});
-
-				// Generar el JWT
-				var token = GenerateJwt(payload.Email);
-				SetTokenCookie(token);
-
-				return Ok(new { message = "Autenticación exitosa.", token });
+					Email = payload.Email,
+					NombreUsuario = payload.Name,
+					Rol = RolUsuario.Free
+				};
+				_context.Usuarios.Add(user);
+				await _context.SaveChangesAsync();
 			}
-			catch (Exception ex)
-			{
-				return BadRequest($"Error al validar el token: {ex.Message}");
-			}
-		}
 
-		// POST: api/auth/logout
-		[HttpPost("logout")]
-		public IActionResult Logout()
-		{
-			// Invalidar la cookie
-			Response.Cookies.Delete("AuthToken");
-			return Ok(new { message = "Logout exitoso." });
-		}
-
-		// Helper: Generar JWT
-		private string GenerateJwt(string email)
-		{
-			// Implementa la generación del JWT aquí
-			return "token_generado";
-		}
-
-		// Helper: Configurar la cookie
-		private void SetTokenCookie(string token)
-		{
-			var cookieOptions = new CookieOptions
+			// Crear cookie de sesión
+			Response.Cookies.Append("session", payload.Email, new CookieOptions
 			{
 				HttpOnly = true,
-				Secure = true,
-				SameSite = SameSiteMode.Strict,
-				Expires = DateTime.UtcNow.AddHours(1)
-			};
-			Response.Cookies.Append("AuthToken", token, cookieOptions);
+				Secure = false,  // Cambiar a true en producción
+				SameSite = SameSiteMode.Lax,
+				Expires = DateTimeOffset.UtcNow.AddHours(1)
+			});
+
+			return Ok(new { user = new { user.NombreUsuario, user.Email, message = "Acceso registrado" } });
+		}
+		catch (Exception ex)
+		{
+			return Unauthorized(new { message = "Error de autenticación", error = ex.Message });
 		}
 	}
 
+	[HttpPost("logout")]
+	public IActionResult Logout()
+	{
+		Response.Cookies.Delete("session", new CookieOptions
+		{
+			Secure = true,
+			SameSite = SameSiteMode.Lax
+		});
+		return Ok(new { message = "Cierre de sesión exitoso" });
+	}
 }

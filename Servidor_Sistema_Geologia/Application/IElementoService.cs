@@ -1,13 +1,12 @@
 ﻿using Servidor_Sistema_Geologia.Models;
 using Servidor_Sistema_Geologia.DTO;
-using Servidor_Sistema_Geologia.DTO.Create;
 
 namespace Servidor_Sistema_Geologia.Application
 {
 	public interface IElementoService<TElemento, TReadDto, TCreateDto>
 		where TElemento : ElementoGeologico
-		where TReadDto : ElementoGeologicoReadDto
-		where TCreateDto : ElementoGeologicoCreateDto
+		where TReadDto : ElementoGeologicoDto
+		where TCreateDto : ElementoGeologicoDto
 	{
 		Task<TReadDto> GetByIdAsync(int id);
 		Task<IEnumerable<TReadDto>> GetAllAsync();
