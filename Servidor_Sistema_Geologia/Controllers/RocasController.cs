@@ -8,15 +8,14 @@ namespace Servidor_Sistema_Geologia.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
-	public class FosilesController : ControllerBase
+	public class RocasController : ControllerBase
 	{
-		private readonly IElementoService<Fosil, FosilDto, FosilDto> _fosilService;
-		private readonly ILogger<FosilesController> _logger;
+		private readonly IElementoService<Roca, RocaDto, RocaDto> _rocaService;
+		private readonly ILogger<RocasController> _logger;
 
-		// Constructor que recibe el servicio en lugar del contexto
-		public FosilesController(IElementoService<Fosil, FosilDto, FosilDto> fosilService, ILogger<FosilesController> logger)
+		public RocasController(IElementoService<Roca, RocaDto, RocaDto> rocaService, ILogger<RocasController> logger)
 		{
-			_fosilService = fosilService ?? throw new ArgumentNullException(nameof(fosilService));
+			_rocaService = rocaService ?? throw new ArgumentNullException(nameof(rocaService));
 			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 		}
 
@@ -31,16 +30,16 @@ namespace Servidor_Sistema_Geologia.Controllers
 			return userId;
 		}
 
-		// GET: api/Fosiles
+		// GET: api/Rocas
 		[HttpGet]
 		[Authorize(Roles = "Free")]
-		public async Task<ActionResult<IEnumerable<FosilDto>>> GetFosiles()
+		public async Task<ActionResult<IEnumerable<RocaDto>>> GetRocas()
 		{
 			try
 			{
 				int usuarioId = GetCurrentUserId();
-				var fosiles = await _fosilService.GetAllAsync(usuarioId);
-				return Ok(fosiles);
+				var rocas = await _rocaService.GetAllAsync(usuarioId);
+				return Ok(rocas);
 			}
 			catch (UnauthorizedAccessException ex)
 			{
@@ -48,27 +47,27 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error al obtener fósiles");
-				return StatusCode(500, new { message = "Error al obtener fósiles" });
+				_logger.LogError(ex, "Error al obtener rocas");
+				return StatusCode(500, new { message = "Error al obtener rocas" });
 			}
 		}
 
-		// GET: api/Fosiles/5
+		// GET: api/Rocas/5
 		[HttpGet("{id}")]
 		[Authorize(Roles = "Free")]
-		public async Task<ActionResult<FosilDto>> GetFosil(int id)
+		public async Task<ActionResult<RocaDto>> GetRoca(int id)
 		{
 			try
 			{
 				int usuarioId = GetCurrentUserId();
-				var fosil = await _fosilService.GetByIdAsync(id, usuarioId);
+				var roca = await _rocaService.GetByIdAsync(id, usuarioId);
 
-				if (fosil == null)
+				if (roca == null)
 				{
 					return NotFound();
 				}
 
-				return Ok(fosil);
+				return Ok(roca);
 			}
 			catch (UnauthorizedAccessException ex)
 			{
@@ -76,17 +75,17 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error al obtener fósil {Id}", id);
-				return StatusCode(500, new { message = "Error al obtener fósil" });
+				_logger.LogError(ex, "Error al obtener roca {Id}", id);
+				return StatusCode(500, new { message = "Error al obtener roca" });
 			}
 		}
 
-		// PUT: api/Fosiles/5
+		// PUT: api/Rocas/5
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Admin")]
-		public async Task<IActionResult> PutFosil(int id, FosilDto fosilDto)
+		public async Task<IActionResult> PutRoca(int id, RocaDto rocaDto)
 		{
-			if (id != fosilDto.Id)
+			if (id != rocaDto.Id)
 			{
 				return BadRequest();
 			}
@@ -94,7 +93,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 			try
 			{
 				int usuarioId = GetCurrentUserId();
-				var actualizado = await _fosilService.UpdateAsync(id, fosilDto, usuarioId);
+				var actualizado = await _rocaService.UpdateAsync(id, rocaDto, usuarioId);
 				return Ok(actualizado);
 			}
 			catch (UnauthorizedAccessException ex)
@@ -107,21 +106,21 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error al actualizar fósil {Id}", id);
-				return StatusCode(500, new { message = "Error al actualizar fósil" });
+				_logger.LogError(ex, "Error al actualizar roca {Id}", id);
+				return StatusCode(500, new { message = "Error al actualizar roca" });
 			}
 		}
 
-		// POST: api/Fosiles
+		// POST: api/Rocas
 		[HttpPost]
 		[Authorize(Roles = "Admin")]
-		public async Task<ActionResult<FosilDto>> PostFosil(FosilDto fosilDto)
+		public async Task<ActionResult<RocaDto>> PostRoca(RocaDto rocaDto)
 		{
 			try
 			{
 				int usuarioId = GetCurrentUserId();
-				var fosilCreado = await _fosilService.CreateElementoConAccesoAsync(fosilDto, usuarioId);
-				return CreatedAtAction("GetFosil", new { id = fosilCreado.Id }, fosilCreado);
+				var rocaCreada = await _rocaService.CreateElementoConAccesoAsync(rocaDto, usuarioId);
+				return CreatedAtAction("GetRoca", new { id = rocaCreada.Id }, rocaCreada);
 			}
 			catch (UnauthorizedAccessException ex)
 			{
@@ -129,21 +128,21 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error al crear fósil");
-				return StatusCode(500, new { message = "Error al crear fósil" });
+				_logger.LogError(ex, "Error al crear roca");
+				return StatusCode(500, new { message = "Error al crear roca" });
 			}
 		}
 
-		// DELETE: api/Fosiles/5
+		// DELETE: api/Rocas/5
 		[HttpDelete("{id}")]
 		[Authorize(Roles = "Admin")]
-		public async Task<IActionResult> DeleteFosil(int id)
+		public async Task<IActionResult> DeleteRoca(int id)
 		{
 			try
 			{
 				int usuarioId = GetCurrentUserId();
-				await _fosilService.DeleteAsync(id, usuarioId);
-				return Ok($"Fósil con ID {id} eliminado.");
+				await _rocaService.DeleteAsync(id, usuarioId);
+				return Ok($"Roca con ID {id} eliminada.");
 			}
 			catch (UnauthorizedAccessException ex)
 			{
@@ -155,8 +154,8 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error al eliminar fósil {Id}", id);
-				return StatusCode(500, new { message = "Error al eliminar fósil" });
+				_logger.LogError(ex, "Error al eliminar roca {Id}", id);
+				return StatusCode(500, new { message = "Error al eliminar roca" });
 			}
 		}
 	}

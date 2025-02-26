@@ -4,7 +4,6 @@ using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.Models;
 using Servidor_Sistema_Geologia.Application;
 using Servidor_Sistema_Geologia.DTO;
-using AutoMapper;
 
 namespace Servidor_Sistema_Geologia.Infrastructure
 {
@@ -13,23 +12,18 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 		where TReadDto : ElementoGeologicoDto, new()
 		where TCreateDto : ElementoGeologicoDto, new()
 	{
-		private readonly IMapper _mapper;
+		public ElementoGeologicoService(GestorSistemaGeologia db) : base(db) { }
 
-		public ElementoGeologicoService(GestorSistemaGeologia db, IMapper mapper) : base(db)
-		{
-			_mapper = mapper;
-		}
-
-		public async Task<TReadDto> GetByIdAsync(int id)
+		public async Task<TReadDto> GetByIdAsync(int id, int usuarioId)
 		{
 			var elemento = await _db.Set<TElemento>()
+				.Include(e => e.Galeria)
+					.ThenInclude(g => g.Fotos)
 				.Include(e => e.Ubicacion)
 					.ThenInclude(u => u.Pais)
 				.Include(e => e.Ubicacion)
 					.ThenInclude(u => u.Provincia)
 				.Include(e => e.EstadoElemento)
-				.Include(e => e.Galeria)
-					.ThenInclude(g => g.Fotos)
 				.FirstOrDefaultAsync(e => e.Id == id && e.EstadoElemento.DescripcionEstado != EstadosElemento.Eliminado);
 
 			if (elemento == null)
@@ -37,41 +31,45 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				return null;
 			}
 
-			return _mapper.Map<TReadDto>(elemento);
+			// Registrar acceso de visualización
+			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Visualizacion);
+
+			return ConvertToDto(elemento);
 		}
 
-		public async Task<IEnumerable<TReadDto>> GetAllAsync()
+		public async Task<IEnumerable<TReadDto>> GetAllAsync(int usuarioId)
 		{
 			var elementos = await _db.Set<TElemento>()
+				.Include(e => e.Galeria)
+					.ThenInclude(g => g.Fotos)
 				.Include(e => e.Ubicacion)
 					.ThenInclude(u => u.Pais)
 				.Include(e => e.Ubicacion)
 					.ThenInclude(u => u.Provincia)
 				.Include(e => e.EstadoElemento)
-				.Include(e => e.Galeria)
-					.ThenInclude(g => g.Fotos)
 				.Where(e => e.EstadoElemento.DescripcionEstado != EstadosElemento.Eliminado)
 				.ToListAsync();
 
-			return _mapper.Map<IEnumerable<TReadDto>>(elementos);
+			// Registramos solo un acceso por llamada a GetAll para no llenar la tabla con muchas entradas
+			await RegistrarAccesoAsync(usuarioId, null, AccionesUsuario.Visualizacion);
+
+			return elementos.Select(e => ConvertToDto(e));
 		}
 
-		public async Task<TElemento> UpdateAsync(int id, TCreateDto elementoDto)
+		public async Task<TElemento> UpdateAsync(int id, TCreateDto elementoDto, int usuarioId)
 		{
 			var elemento = await _db.Set<TElemento>()
 				.Include(e => e.Galeria)
-					.ThenInclude(g => g.Fotos)
 				.FirstOrDefaultAsync(e => e.Id == id);
 
 			if (elemento == null)
 			{
-				throw new KeyNotFoundException($"Elemento con ID {id} no encontrado");
+				throw new KeyNotFoundException("Elemento no encontrado");
 			}
 
-			// Mapear propiedades básicas
-			_mapper.Map(elementoDto, elemento);
+			// Actualizar las propiedades del elemento
+			UpdateEntity(elemento, elementoDto);
 
-			// Manejar relaciones especiales
 			if (elementoDto.EstadoElemento != null)
 			{
 				var estado = await ObtenerOcrearEstadoAsync(elementoDto.EstadoElemento);
@@ -84,49 +82,44 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				elemento.UbicacionId = ubicacion.Id;
 			}
 
-			// Actualizar fotos si existen
+			await _db.SaveChangesAsync();
+
+			// Manejar las fotos si se proporcionan
 			if (elementoDto.Fotos != null && elementoDto.Fotos.Any())
 			{
-				await ActualizarFotosAsync(elemento.Id, elementoDto.Fotos);
+				await GuardarFotosAsync(elemento.Id, elementoDto.Fotos);
 			}
 
-			await _db.SaveChangesAsync();
+			// Registrar acceso de edición
+			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Edicion);
+
+			return elemento;
+		}
+
+		public async Task<TElemento> CreateElementoConAccesoAsync(TCreateDto elementoDto, int usuarioId)
+		{
+			var elemento = await CreateAsync(elementoDto);
+
+			// Registrar acceso de creación
+			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Creacion);
+
 			return elemento;
 		}
 
 		public async Task<TElemento> CreateAsync(TCreateDto elementoDto)
 		{
-			var elemento = _mapper.Map<TElemento>(elementoDto);
+			var ubicacion = elementoDto.Ubicacion != null ? await ObtenerOcrearUbicacionAsync(elementoDto.Ubicacion) : null;
+			var estado = elementoDto.EstadoElemento != null ? await ObtenerOcrearEstadoAsync(elementoDto.EstadoElemento) : null;
 
-			// Gestionar relaciones
-			if (elementoDto.Ubicacion != null)
-			{
-				var ubicacion = await ObtenerOcrearUbicacionAsync(elementoDto.Ubicacion);
-				elemento.UbicacionId = ubicacion.Id;
-			}
+			var elemento = ConvertToEntity(elementoDto);
 
-			if (elementoDto.EstadoElemento != null)
-			{
-				var estado = await ObtenerOcrearEstadoAsync(elementoDto.EstadoElemento);
-				elemento.EstadoElementoId = estado.Id;
-			}
-			else
-			{
-				// Estado por defecto si no se especifica
-				var estadoActivo = await _db.EstadosElementos.FirstOrDefaultAsync(e => e.DescripcionEstado == EstadosElemento.Creado);
-				if (estadoActivo == null)
-				{
-					estadoActivo = new EstadoElemento { DescripcionEstado = EstadosElemento.Creado };
-					_db.EstadosElementos.Add(estadoActivo);
-					await _db.SaveChangesAsync();
-				}
-				elemento.EstadoElementoId = estadoActivo.Id;
-			}
+			elemento.UbicacionId = ubicacion?.Id;
+			elemento.EstadoElementoId = estado?.Id;
 
 			_db.Set<TElemento>().Add(elemento);
 			await _db.SaveChangesAsync();
 
-			// Crear galería y fotos si existen
+			// Guardar las fotos si existen
 			if (elementoDto.Fotos != null && elementoDto.Fotos.Any())
 			{
 				await GuardarFotosAsync(elemento.Id, elementoDto.Fotos);
@@ -135,80 +128,55 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elemento;
 		}
 
-		public async Task<TElemento> CreateElementoConAccesoAsync(TCreateDto dto, int usuarioId)
+		public async Task DeleteAsync(int id, int usuarioId)
 		{
-			// Primero creamos el elemento
-			var elemento = await CreateAsync(dto);
-
-			// Luego registramos el acceso
-			var acceso = new Acceso
-			{
-				UsuarioId = usuarioId,
-				ElementoGeologicoId = elemento.Id,
-				FechaAcceso = DateTime.UtcNow,
-				Accion = AccionesUsuario.Creacion
-			};
-
-			_db.Accesos.Add(acceso);
-			await _db.SaveChangesAsync();
-
-			return elemento;
-		}
-
-		public async Task DeleteAsync(int id)
-		{
-			var elemento = await _db.Set<TElemento>()
+			var elemento = await _db.ElementosGeologicos
 				.Include(e => e.EstadoElemento)
 				.FirstOrDefaultAsync(e => e.Id == id);
 
 			if (elemento == null)
 			{
-				throw new KeyNotFoundException($"Elemento con ID {id} no encontrado");
+				throw new KeyNotFoundException("Elemento no encontrado");
 			}
 
-			// Verificar si ya existe un estado "Eliminado"
-			var estadoEliminado = await _db.EstadosElementos
-				.FirstOrDefaultAsync(e => e.DescripcionEstado == EstadosElemento.Eliminado);
-
-			if (estadoEliminado == null)
+			if (elemento.EstadoElemento == null)
 			{
-				estadoEliminado = new EstadoElemento { DescripcionEstado = EstadosElemento.Eliminado };
-				_db.EstadosElementos.Add(estadoEliminado);
+				// Si no tiene estado, crear uno
+				var estado = new EstadoElemento { DescripcionEstado = EstadosElemento.Eliminado };
+				_db.EstadosElementos.Add(estado);
 				await _db.SaveChangesAsync();
+
+				elemento.EstadoElementoId = estado.Id;
+			}
+			else
+			{
+				elemento.EstadoElemento.DescripcionEstado = EstadosElemento.Eliminado;
 			}
 
-			// Marcar como eliminado (borrado lógico)
-			elemento.EstadoElementoId = estadoEliminado.Id;
 			await _db.SaveChangesAsync();
+
+			// Registrar acceso de eliminación
+			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Eliminacion);
 		}
 
-		// Método adicional para actualizar fotos existentes
-		private async Task ActualizarFotosAsync(int elementoId, IEnumerable<FotoElementoDto> fotosDto)
+		// Método privado para registrar accesos
+		private async Task RegistrarAccesoAsync(int usuarioId, int? elementoId, AccionesUsuario accion)
 		{
-			// Obtener la galería existente o crear una nueva
-			var galeria = await _db.GaleriaElementosGeologicos
-				.Include(g => g.Fotos)
-				.FirstOrDefaultAsync(g => g.ElementoGeologicoId == elementoId);
-
-			if (galeria == null)
+			var acceso = new Acceso
 			{
-				// Si no existe galería, crear una nueva
-				await GuardarFotosAsync(elementoId, fotosDto);
-				return;
-			}
+				UsuarioId = usuarioId,
+				ElementoGeologicoId = elementoId,
+				FechaAcceso = DateTime.UtcNow,
+				Accion = accion
+			};
 
-			// Eliminar fotos existentes (opcional, depende de tu lógica de negocio)
-			_db.FotosElementos.RemoveRange(galeria.Fotos);
-
-			// Agregar nuevas fotos
-			foreach (var fotoDto in fotosDto)
-			{
-				var foto = _mapper.Map<FotoElemento>(fotoDto);
-				foto.GaleriaElementosGeologicoId = galeria.Id;
-				_db.FotosElementos.Add(foto);
-			}
-
+			_db.Accesos.Add(acceso);
 			await _db.SaveChangesAsync();
 		}
+
+		// Métodos de conversión:
+		protected virtual TReadDto ConvertToDto(TElemento elemento) => throw new NotImplementedException();
+		protected virtual TElemento ConvertToEntity(TCreateDto dto) => throw new NotImplementedException();
+		protected virtual void UpdateEntity(TElemento elemento, TCreateDto dto) => throw new NotImplementedException();
 	}
 }
