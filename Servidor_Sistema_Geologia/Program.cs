@@ -73,11 +73,22 @@ builder.Services.AddCors(options =>
 		});
 });
 
-// Configurar autenticación con Google y Cookie
-builder.Services.AddAuthentication(options =>
+// Verificar si existe la configuración de Google
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+var hasGoogleConfig = !string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret);
+
+if (!hasGoogleConfig)
+{
+	Console.WriteLine("ADVERTENCIA: No se encontró la configuración de autenticación de Google. " +
+					 "Asegúrate de configurar Authentication:Google:ClientId y Authentication:Google:ClientSecret " +
+					 "en appsettings.json o en variables de entorno.");
+}
+
+// Configurar autenticación
+var authBuilder = builder.Services.AddAuthentication(options =>
 {
 	options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-	options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
 })
 .AddCookie(options =>
 {
@@ -85,21 +96,26 @@ builder.Services.AddAuthentication(options =>
 	options.Cookie.HttpOnly = true;
 	options.Cookie.SameSite = SameSiteMode.Lax;
 	options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-	options.LoginPath = "/api/auth/google-login";
+	options.LoginPath = "/api/auth/login";
 	options.AccessDeniedPath = "/api/auth/access-denied";
 	options.ExpireTimeSpan = TimeSpan.FromHours(2);
 	options.SlidingExpiration = true;
-})
-.AddGoogle(options =>
-{
-	options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-	options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-	options.CallbackPath = "/api/auth/google-response"; // URI igual Google Cloud Console
-	options.Scope.Add("openid");
-	options.Scope.Add("profile");
-	options.Scope.Add("email");
-	options.SaveTokens = true; // Guarda los tokens de autenticación en la cookie
 });
+
+// Solo añadir Google si existe la configuración
+if (hasGoogleConfig)
+{
+	authBuilder.AddGoogle(options =>
+	{
+		options.ClientId = googleClientId;
+		options.ClientSecret = googleClientSecret;
+		options.CallbackPath = "/api/auth/google-response"; // URI igual Google Cloud Console
+		options.Scope.Add("openid");
+		options.Scope.Add("profile");
+		options.Scope.Add("email");
+		options.SaveTokens = true; // Guarda los tokens de autenticación en la cookie
+	});
+}
 
 builder.Services.AddAuthorization();
 

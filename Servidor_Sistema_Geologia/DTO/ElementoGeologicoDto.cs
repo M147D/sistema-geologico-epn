@@ -15,9 +15,7 @@
 		public UbicacionDto? Ubicacion { get; set; }
 		public EstadoElementoDto? EstadoElemento { get; set; }
 		public GaleriaElementoGeologicoDto? Galeria { get; set; }
-		public List<FotoElementoDto>? Fotos { get; set; }
-
-		// Campo adicional para control de acceso
+		public List<FotoElementoDto> Fotos { get; set; } = new List<FotoElementoDto>();
 		public int UsuarioId { get; set; }
 	}
 }

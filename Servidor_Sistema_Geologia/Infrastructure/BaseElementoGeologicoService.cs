@@ -85,21 +85,38 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 		{
 			if (fotosDto == null || !fotosDto.Any()) return;
 
-			foreach (var fotoDto in fotosDto)
+			// Verificar si ya existe una galería para este elemento
+			var galeria = await _db.GaleriaElementosGeologicos
+				.FirstOrDefaultAsync(g => g.ElementoGeologicoId == elementoId);
+
+			// Si no existe, crear una nueva
+			if (galeria == null)
 			{
-				var galeria = new GaleriaElementoGeologico
+				galeria = new GaleriaElementoGeologico
 				{
-					DetalleGrupo = fotoDto.Galeria.DetalleGrupo,
-					ElementoGeologicoId = elementoId,
+					DetalleGrupo = "Galería principal",
+					ElementoGeologicoId = elementoId
 				};
 
 				_db.GaleriaElementosGeologicos.Add(galeria);
 				await _db.SaveChangesAsync();
 
+				// Actualizar el elemento geológico con la referencia a la galería
+				var elemento = await _db.ElementosGeologicos.FindAsync(elementoId);
+				if (elemento != null)
+				{
+					elemento.GaleriaElementosGeologicoId = galeria.Id;
+					await _db.SaveChangesAsync();
+				}
+			}
+
+			// Agregar las fotos a la galería existente
+			foreach (var fotoDto in fotosDto)
+			{
 				var foto = new FotoElemento
 				{
 					TipoFoto = fotoDto.TipoFoto,
-					FechaSubida = fotoDto.FechaSubida,
+					FechaSubida = fotoDto.FechaSubida ?? DateTime.UtcNow,
 					CreadoPor = fotoDto.CreadoPor,
 					DescripcionEspecifica = fotoDto.DescripcionEspecifica,
 					Etiquetas = fotoDto.Etiquetas,

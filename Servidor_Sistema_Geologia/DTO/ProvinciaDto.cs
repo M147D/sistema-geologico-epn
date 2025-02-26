@@ -4,5 +4,6 @@
 	{
 		public int Id { get; set; }
 		public string? NombreProvincia { get; set; }
+		public int? PaisId { get; set; }
 	}
 }

@@ -1,7 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace Servidor_Sistema_Geologia.Models
+﻿namespace Servidor_Sistema_Geologia.Models
 {
 	public class Roca : ElementoGeologico
 	{
