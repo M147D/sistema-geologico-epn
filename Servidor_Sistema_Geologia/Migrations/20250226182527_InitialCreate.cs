@@ -17,11 +17,25 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    DescripcionEstado = table.Column<int>(type: "int", nullable: false)
+                    DescripcionEstado = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_EstadosElementos", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "GaleriaElementosGeologicos",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ElementoGeologicoId = table.Column<int>(type: "int", nullable: true),
+                    DetalleGrupo = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GaleriaElementosGeologicos", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -46,12 +60,37 @@ namespace Servidor_Sistema_Geologia.Migrations
                     Nombres = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Apellidos = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     NombreUsuario = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CorreoUsuario = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Rol = table.Column<int>(type: "int", nullable: false)
+                    Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Rol = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Usuarios", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FotosElementos",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    GaleriaElementosGeologicoId = table.Column<int>(type: "int", nullable: true),
+                    Imagen = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
+                    TipoFoto = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FechaSubida = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CreadoPor = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    DescripcionEspecifica = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Etiquetas = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FotosElementos", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FotosElementos_GaleriaElementosGeologicos_GaleriaElementosGeologicoId",
+                        column: x => x.GaleriaElementosGeologicoId,
+                        principalTable: "GaleriaElementosGeologicos",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -70,7 +109,8 @@ namespace Servidor_Sistema_Geologia.Migrations
                         name: "FK_Provincias_Paises_PaisId",
                         column: x => x.PaisId,
                         principalTable: "Paises",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -93,12 +133,14 @@ namespace Servidor_Sistema_Geologia.Migrations
                         name: "FK_Ubicaciones_Paises_PaisId",
                         column: x => x.PaisId,
                         principalTable: "Paises",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Ubicaciones_Provincias_ProvinciaId",
                         column: x => x.ProvinciaId,
                         principalTable: "Provincias",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -109,16 +151,17 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     EstadoElementoId = table.Column<int>(type: "int", nullable: true),
                     UbicacionId = table.Column<int>(type: "int", nullable: true),
+                    GaleriaElementosGeologicoId = table.Column<int>(type: "int", nullable: true),
                     Nombre = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Edad = table.Column<int>(type: "int", nullable: true),
                     Donante = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    FechaIngreso = table.Column<int>(type: "int", nullable: false),
+                    FechaIngreso = table.Column<int>(type: "int", nullable: true),
                     Codigo = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Ejemplares = table.Column<int>(type: "int", nullable: true),
                     DocumentosRelacionados = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     LaminaURL = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     LaminaExiste = table.Column<bool>(type: "bit", nullable: true),
-                    Discriminator = table.Column<string>(type: "nvarchar(21)", maxLength: 21, nullable: false),
+                    TipoElemento = table.Column<string>(type: "nvarchar(21)", maxLength: 21, nullable: false),
                     Especie = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Periodo = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     TipoRoca = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -131,12 +174,20 @@ namespace Servidor_Sistema_Geologia.Migrations
                         name: "FK_ElementosGeologicos_EstadosElementos_EstadoElementoId",
                         column: x => x.EstadoElementoId,
                         principalTable: "EstadosElementos",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ElementosGeologicos_GaleriaElementosGeologicos_GaleriaElementosGeologicoId",
+                        column: x => x.GaleriaElementosGeologicoId,
+                        principalTable: "GaleriaElementosGeologicos",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ElementosGeologicos_Ubicaciones_UbicacionId",
                         column: x => x.UbicacionId,
                         principalTable: "Ubicaciones",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -147,8 +198,8 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UsuarioId = table.Column<int>(type: "int", nullable: true),
                     ElementoGeologicoId = table.Column<int>(type: "int", nullable: true),
-                    FechaAcceso = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Accion = table.Column<int>(type: "int", nullable: false)
+                    FechaAcceso = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Accion = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -157,62 +208,14 @@ namespace Servidor_Sistema_Geologia.Migrations
                         name: "FK_Accesos_ElementosGeologicos_ElementoGeologicoId",
                         column: x => x.ElementoGeologicoId,
                         principalTable: "ElementosGeologicos",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Accesos_Usuarios_UsuarioId",
                         column: x => x.UsuarioId,
                         principalTable: "Usuarios",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "GaleriaElementosGeologicos",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ElementoGeologicoId = table.Column<int>(type: "int", nullable: true),
-                    DetalleGrupo = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_GaleriaElementosGeologicos", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_GaleriaElementosGeologicos_ElementosGeologicos_ElementoGeologicoId",
-                        column: x => x.ElementoGeologicoId,
-                        principalTable: "ElementosGeologicos",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FotosElementos",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ElementoGeologicoId = table.Column<int>(type: "int", nullable: true),
-                    GaleriaElementosGeologicoId = table.Column<int>(type: "int", nullable: true),
-                    Imagen = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                    TipoFoto = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    FechaSubida = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreadoPor = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    DescripcionEspecifica = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Etiquetas = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    GaleriaId = table.Column<int>(type: "int", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FotosElementos", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_FotosElementos_ElementosGeologicos_ElementoGeologicoId",
-                        column: x => x.ElementoGeologicoId,
-                        principalTable: "ElementosGeologicos",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_FotosElementos_GaleriaElementosGeologicos_GaleriaId",
-                        column: x => x.GaleriaId,
-                        principalTable: "GaleriaElementosGeologicos",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -231,24 +234,21 @@ namespace Servidor_Sistema_Geologia.Migrations
                 column: "EstadoElementoId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ElementosGeologicos_GaleriaElementosGeologicoId",
+                table: "ElementosGeologicos",
+                column: "GaleriaElementosGeologicoId",
+                unique: true,
+                filter: "[GaleriaElementosGeologicoId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ElementosGeologicos_UbicacionId",
                 table: "ElementosGeologicos",
                 column: "UbicacionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_FotosElementos_ElementoGeologicoId",
+                name: "IX_FotosElementos_GaleriaElementosGeologicoId",
                 table: "FotosElementos",
-                column: "ElementoGeologicoId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_FotosElementos_GaleriaId",
-                table: "FotosElementos",
-                column: "GaleriaId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_GaleriaElementosGeologicos_ElementoGeologicoId",
-                table: "GaleriaElementosGeologicos",
-                column: "ElementoGeologicoId");
+                column: "GaleriaElementosGeologicoId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Provincias_PaisId",
@@ -276,16 +276,16 @@ namespace Servidor_Sistema_Geologia.Migrations
                 name: "FotosElementos");
 
             migrationBuilder.DropTable(
-                name: "Usuarios");
-
-            migrationBuilder.DropTable(
-                name: "GaleriaElementosGeologicos");
-
-            migrationBuilder.DropTable(
                 name: "ElementosGeologicos");
 
             migrationBuilder.DropTable(
+                name: "Usuarios");
+
+            migrationBuilder.DropTable(
                 name: "EstadosElementos");
+
+            migrationBuilder.DropTable(
+                name: "GaleriaElementosGeologicos");
 
             migrationBuilder.DropTable(
                 name: "Ubicaciones");
