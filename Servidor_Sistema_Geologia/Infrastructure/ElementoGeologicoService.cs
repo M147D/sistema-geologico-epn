@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// 2. Ahora actualizamos el servicio base ElementoGeologicoService
+using Microsoft.EntityFrameworkCore;
 using Servidor_Sistema_Geologia.Constants;
 using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.Models;
@@ -10,7 +11,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 	public class ElementoGeologicoService<TElemento, TReadDto, TCreateDto> : BaseElementoGeologicoService, IElementoService<TElemento, TReadDto, TCreateDto>
 		where TElemento : ElementoGeologico, new()
 		where TReadDto : ElementoGeologicoDto, new()
-		where TCreateDto : ElementoGeologicoDto, new()
 	{
 		public ElementoGeologicoService(GestorSistemaGeologia db) : base(db) { }
 
@@ -56,7 +56,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elementos.Select(e => ConvertToDto(e));
 		}
 
-		public async Task<TElemento> UpdateAsync(int id, TCreateDto elementoDto, int usuarioId)
+		public async Task<TElemento> UpdateAsync(int id, TCreateDto dto, int usuarioId)
 		{
 			var elemento = await _db.Set<TElemento>()
 				.Include(e => e.Galeria)
@@ -68,27 +68,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			}
 
 			// Actualizar las propiedades del elemento
-			UpdateEntity(elemento, elementoDto);
-
-			if (elementoDto.EstadoElemento != null)
-			{
-				var estado = await ObtenerOcrearEstadoAsync(elementoDto.EstadoElemento);
-				elemento.EstadoElementoId = estado.Id;
-			}
-
-			if (elementoDto.Ubicacion != null)
-			{
-				var ubicacion = await ObtenerOcrearUbicacionAsync(elementoDto.Ubicacion);
-				elemento.UbicacionId = ubicacion.Id;
-			}
-
-			await _db.SaveChangesAsync();
-
-			// Manejar las fotos si se proporcionan
-			if (elementoDto.Fotos != null && elementoDto.Fotos.Any())
-			{
-				await GuardarFotosAsync(elemento.Id, elementoDto.Fotos);
-			}
+			UpdateEntity(elemento, dto);
 
 			// Registrar acceso de edición
 			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Edicion);
@@ -96,9 +76,9 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elemento;
 		}
 
-		public async Task<TElemento> CreateElementoConAccesoAsync(TCreateDto elementoDto, int usuarioId)
+		public async Task<TElemento> CreateElementoConAccesoAsync(TCreateDto dto, int usuarioId)
 		{
-			var elemento = await CreateAsync(elementoDto);
+			var elemento = await CreateAsync(dto);
 
 			// Registrar acceso de creación
 			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Creacion);
@@ -106,24 +86,13 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elemento;
 		}
 
-		public async Task<TElemento> CreateAsync(TCreateDto elementoDto)
+		public async Task<TElemento> CreateAsync(TCreateDto dto)
 		{
-			var ubicacion = elementoDto.Ubicacion != null ? await ObtenerOcrearUbicacionAsync(elementoDto.Ubicacion) : null;
-			var estado = elementoDto.EstadoElemento != null ? await ObtenerOcrearEstadoAsync(elementoDto.EstadoElemento) : null;
-
-			var elemento = ConvertToEntity(elementoDto);
-
-			elemento.UbicacionId = ubicacion?.Id;
-			elemento.EstadoElementoId = estado?.Id;
+			// Este método debe ser implementado por clases derivadas
+			var elemento = ConvertToEntity(dto);
 
 			_db.Set<TElemento>().Add(elemento);
 			await _db.SaveChangesAsync();
-
-			// Guardar las fotos si existen
-			if (elementoDto.Fotos != null && elementoDto.Fotos.Any())
-			{
-				await GuardarFotosAsync(elemento.Id, elementoDto.Fotos);
-			}
 
 			return elemento;
 		}

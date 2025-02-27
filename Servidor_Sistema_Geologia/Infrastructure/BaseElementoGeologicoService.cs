@@ -85,11 +85,11 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 		{
 			if (fotosDto == null || !fotosDto.Any()) return;
 
-			// Verificar si ya existe una galería para este elemento
+			// Verifica si ya existe una galería para este elemento
 			var galeria = await _db.GaleriaElementosGeologicos
 				.FirstOrDefaultAsync(g => g.ElementoGeologicoId == elementoId);
 
-			// Si no existe, crear una nueva
+			// Si no existe, crea una nueva
 			if (galeria == null)
 			{
 				galeria = new GaleriaElementoGeologico
@@ -101,7 +101,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				_db.GaleriaElementosGeologicos.Add(galeria);
 				await _db.SaveChangesAsync();
 
-				// Actualizar el elemento geológico con la referencia a la galería
+				// Actualiza el elemento geológico con la referencia a la galería
 				var elemento = await _db.ElementosGeologicos.FindAsync(elementoId);
 				if (elemento != null)
 				{
