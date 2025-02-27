@@ -12,10 +12,18 @@
 		public string? DocumentosRelacionados { get; set; }
 		public string? LaminaURL { get; set; }
 		public bool? LaminaExiste { get; set; }
+
+		// Propiedades de navegación
 		public UbicacionDto? Ubicacion { get; set; }
 		public EstadoElementoDto? EstadoElemento { get; set; }
 		public GaleriaElementoGeologicoDto? Galeria { get; set; }
-		public List<FotoElementoDto> Fotos { get; set; } = new List<FotoElementoDto>();
+
+		// ID para crear el registro de acceso
 		public int UsuarioId { get; set; }
+
+		// Referencias a IDs para mantener las relaciones
+		public int? UbicacionId { get; set; }
+		public int? EstadoElementoId { get; set; }
+		public int? GaleriaElementosGeologicoId { get; set; }
 	}
 }

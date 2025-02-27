@@ -3,7 +3,6 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Servidor_Sistema_Geologia.DAL;
 
@@ -12,15 +11,13 @@ using Servidor_Sistema_Geologia.DAL;
 namespace Servidor_Sistema_Geologia.Migrations
 {
     [DbContext(typeof(GestorSistemaGeologia))]
-    [Migration("20250116224612_InitialCreate")]
-    partial class InitialCreate
+    partial class GestorSistemaGeologiaModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -33,13 +30,13 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Accion")
-                        .HasColumnType("int");
+                    b.Property<string>("Accion")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ElementoGeologicoId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("FechaAcceso")
+                    b.Property<DateTime?>("FechaAcceso")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("UsuarioId")
@@ -65,11 +62,6 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<string>("Codigo")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Discriminator")
-                        .IsRequired()
-                        .HasMaxLength(21)
-                        .HasColumnType("nvarchar(21)");
-
                     b.Property<string>("DocumentosRelacionados")
                         .HasColumnType("nvarchar(max)");
 
@@ -85,7 +77,10 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<int?>("EstadoElementoId")
                         .HasColumnType("int");
 
-                    b.Property<int>("FechaIngreso")
+                    b.Property<int?>("FechaIngreso")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GaleriaElementosGeologicoId")
                         .HasColumnType("int");
 
                     b.Property<bool?>("LaminaExiste")
@@ -97,6 +92,11 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<string>("Nombre")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("TipoElemento")
+                        .IsRequired()
+                        .HasMaxLength(21)
+                        .HasColumnType("nvarchar(21)");
+
                     b.Property<int?>("UbicacionId")
                         .HasColumnType("int");
 
@@ -104,11 +104,15 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.HasIndex("EstadoElementoId");
 
+                    b.HasIndex("GaleriaElementosGeologicoId")
+                        .IsUnique()
+                        .HasFilter("[GaleriaElementosGeologicoId] IS NOT NULL");
+
                     b.HasIndex("UbicacionId");
 
                     b.ToTable("ElementosGeologicos");
 
-                    b.HasDiscriminator().HasValue("ElementoGeologico");
+                    b.HasDiscriminator<string>("TipoElemento").HasValue("ElementoGeologico");
 
                     b.UseTphMappingStrategy();
                 });
@@ -121,8 +125,9 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("DescripcionEstado")
-                        .HasColumnType("int");
+                    b.Property<string>("DescripcionEstado")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -143,19 +148,13 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<string>("DescripcionEspecifica")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("ElementoGeologicoId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Etiquetas")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("FechaSubida")
+                    b.Property<DateTime?>("FechaSubida")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("GaleriaElementosGeologicoId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("GaleriaId")
                         .HasColumnType("int");
 
                     b.Property<byte[]>("Imagen")
@@ -166,9 +165,7 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ElementoGeologicoId");
-
-                    b.HasIndex("GaleriaId");
+                    b.HasIndex("GaleriaElementosGeologicoId");
 
                     b.ToTable("FotosElementos");
                 });
@@ -188,8 +185,6 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ElementoGeologicoId");
 
                     b.ToTable("GaleriaElementosGeologicos");
                 });
@@ -283,7 +278,7 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<string>("Apellidos")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("CorreoUsuario")
+                    b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NombreUsuario")
@@ -292,8 +287,9 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<string>("Nombres")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Rol")
-                        .HasColumnType("int");
+                    b.Property<string>("Rol")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -330,11 +326,13 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.HasOne("Servidor_Sistema_Geologia.Models.ElementoGeologico", "ElementoGeologico")
                         .WithMany()
-                        .HasForeignKey("ElementoGeologicoId");
+                        .HasForeignKey("ElementoGeologicoId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Servidor_Sistema_Geologia.Models.Usuario", "Usuario")
                         .WithMany("Accesos")
-                        .HasForeignKey("UsuarioId");
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ElementoGeologico");
 
@@ -345,46 +343,42 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.HasOne("Servidor_Sistema_Geologia.Models.EstadoElemento", "EstadoElemento")
                         .WithMany()
-                        .HasForeignKey("EstadoElementoId");
+                        .HasForeignKey("EstadoElementoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Servidor_Sistema_Geologia.Models.GaleriaElementoGeologico", "Galeria")
+                        .WithOne("ElementoGeologico")
+                        .HasForeignKey("Servidor_Sistema_Geologia.Models.ElementoGeologico", "GaleriaElementosGeologicoId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Servidor_Sistema_Geologia.Models.Ubicacion", "Ubicacion")
                         .WithMany("ElementosGeologicos")
-                        .HasForeignKey("UbicacionId");
+                        .HasForeignKey("UbicacionId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("EstadoElemento");
+
+                    b.Navigation("Galeria");
 
                     b.Navigation("Ubicacion");
                 });
 
             modelBuilder.Entity("Servidor_Sistema_Geologia.Models.FotoElemento", b =>
                 {
-                    b.HasOne("Servidor_Sistema_Geologia.Models.ElementoGeologico", "ElementoGeologico")
-                        .WithMany("Fotos")
-                        .HasForeignKey("ElementoGeologicoId");
-
                     b.HasOne("Servidor_Sistema_Geologia.Models.GaleriaElementoGeologico", "Galeria")
                         .WithMany("Fotos")
-                        .HasForeignKey("GaleriaId");
-
-                    b.Navigation("ElementoGeologico");
+                        .HasForeignKey("GaleriaElementosGeologicoId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Galeria");
-                });
-
-            modelBuilder.Entity("Servidor_Sistema_Geologia.Models.GaleriaElementoGeologico", b =>
-                {
-                    b.HasOne("Servidor_Sistema_Geologia.Models.ElementoGeologico", "ElementoGeologico")
-                        .WithMany()
-                        .HasForeignKey("ElementoGeologicoId");
-
-                    b.Navigation("ElementoGeologico");
                 });
 
             modelBuilder.Entity("Servidor_Sistema_Geologia.Models.Provincia", b =>
                 {
                     b.HasOne("Servidor_Sistema_Geologia.Models.Pais", "Pais")
                         .WithMany("Provincias")
-                        .HasForeignKey("PaisId");
+                        .HasForeignKey("PaisId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Pais");
                 });
@@ -392,31 +386,32 @@ namespace Servidor_Sistema_Geologia.Migrations
             modelBuilder.Entity("Servidor_Sistema_Geologia.Models.Ubicacion", b =>
                 {
                     b.HasOne("Servidor_Sistema_Geologia.Models.Pais", "Pais")
-                        .WithMany()
-                        .HasForeignKey("PaisId");
+                        .WithMany("Ubicaciones")
+                        .HasForeignKey("PaisId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Servidor_Sistema_Geologia.Models.Provincia", "Provincia")
                         .WithMany("Ubicaciones")
-                        .HasForeignKey("ProvinciaId");
+                        .HasForeignKey("ProvinciaId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Pais");
 
                     b.Navigation("Provincia");
                 });
 
-            modelBuilder.Entity("Servidor_Sistema_Geologia.Models.ElementoGeologico", b =>
-                {
-                    b.Navigation("Fotos");
-                });
-
             modelBuilder.Entity("Servidor_Sistema_Geologia.Models.GaleriaElementoGeologico", b =>
                 {
+                    b.Navigation("ElementoGeologico");
+
                     b.Navigation("Fotos");
                 });
 
             modelBuilder.Entity("Servidor_Sistema_Geologia.Models.Pais", b =>
                 {
                     b.Navigation("Provincias");
+
+                    b.Navigation("Ubicaciones");
                 });
 
             modelBuilder.Entity("Servidor_Sistema_Geologia.Models.Provincia", b =>

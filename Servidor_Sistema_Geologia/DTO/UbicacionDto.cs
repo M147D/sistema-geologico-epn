@@ -7,7 +7,17 @@
 		public string? Longitud { get; set; }
 		public string? Localidad { get; set; }
 		public string? Leyenda { get; set; }
+
+		// Propiedades de navegación
 		public PaisDto? Pais { get; set; }
 		public ProvinciaDto? Provincia { get; set; }
+
+		// Referencias a IDs para mantener las relaciones
+		public int? PaisId { get; set; }
+		public int? ProvinciaId { get; set; }
+
+		// Campos adicionales para facilitar la creación
+		public string? NombrePais { get; set; }
+		public string? NombreProvincia { get; set; }
 	}
 }
