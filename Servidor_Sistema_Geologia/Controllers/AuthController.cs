@@ -8,6 +8,8 @@ using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace Servidor_Sistema_Geologia.Controllers
 {
@@ -26,21 +28,20 @@ namespace Servidor_Sistema_Geologia.Controllers
 			_logger = logger;
 		}
 
-		// Ruta para procesar el token de Google desde el frontend
 		[HttpPost("login/google")]
 		public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
 		{
 			try
 			{
-				// Verificamos que exista la configuración
+				// Verificar configuración de Google
 				var clientId = _configuration["Authentication:Google:ClientId"];
 				if (string.IsNullOrEmpty(clientId))
 				{
 					_logger.LogError("El ClientId de Google no está configurado");
-					return StatusCode(500, new { message = "Configuración de autenticación incompleta. Contacte al administrador." });
+					return StatusCode(500, new { message = "Configuración de autenticación incompleta" });
 				}
 
-				// Validar el token de Google
+				// Validar token de Google
 				var settings = new GoogleJsonWebSignature.ValidationSettings
 				{
 					Audience = new[] { clientId }
@@ -54,7 +55,6 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 				if (user == null)
 				{
-					// Nuevo usuario - registrarlo con rol Free por defecto
 					user = new Usuario
 					{
 						Email = payload.Email,
@@ -65,30 +65,45 @@ namespace Servidor_Sistema_Geologia.Controllers
 					};
 					_context.Usuarios.Add(user);
 					await _context.SaveChangesAsync();
-					_logger.LogInformation("Nuevo usuario registrado: {Email}", payload.Email);
 				}
 
-				// Crear cookie de sesión
-				var sessionToken = Guid.NewGuid().ToString(); // Token único para la sesión
-
-				Response.Cookies.Append("session", sessionToken, new CookieOptions
+				// Crear claims principal
+				var claims = new List<Claim>
 				{
-					HttpOnly = true,
-					Secure = HttpContext.Request.IsHttps,
-					SameSite = SameSiteMode.Lax,
-					Expires = DateTimeOffset.UtcNow.AddDays(7)
-				});
+					new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+					new Claim(ClaimTypes.Email, user.Email),
+					new Claim(ClaimTypes.Name, user.NombreUsuario),
+					new Claim(ClaimTypes.Role, user.Rol.ToString())
+				};
 
-				// Crear también cookie para almacenar el ID de usuario
+				var claimsIdentity = new ClaimsIdentity(
+					claims,
+					CookieAuthenticationDefaults.AuthenticationScheme
+				);
+
+				var authProperties = new AuthenticationProperties
+				{
+					AllowRefresh = true,
+					IsPersistent = true,
+					ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
+				};
+
+				// Iniciar sesión con claims
+				await HttpContext.SignInAsync(
+					CookieAuthenticationDefaults.AuthenticationScheme,
+					new ClaimsPrincipal(claimsIdentity),
+					authProperties
+				);
+
 				Response.Cookies.Append("user_id", user.Id.ToString(), new CookieOptions
 				{
 					HttpOnly = false,
-					Secure = HttpContext.Request.IsHttps,
+					Secure = false,
 					SameSite = SameSiteMode.Lax,
-					Expires = DateTimeOffset.UtcNow.AddDays(7)
+					Expires = DateTimeOffset.UtcNow.AddDays(7),
+					Path = "/"
 				});
 
-				// Respuesta exitosa con datos del usuario
 				return Ok(new
 				{
 					user = new
@@ -97,20 +112,49 @@ namespace Servidor_Sistema_Geologia.Controllers
 						nombre = user.NombreUsuario,
 						email = user.Email,
 						rol = user.Rol.ToString(),
-						picture = payload.Picture
 					},
 					message = "Autenticación exitosa"
 				});
 			}
-			catch (InvalidJwtException ex)
+			catch (Exception ex)
 			{
-				_logger.LogWarning("Token JWT inválido: {Message}", ex.Message);
-				return Unauthorized(new { message = "Token inválido o expirado" });
+				_logger.LogError(ex, "Error en autenticación: {Message}", ex.Message);
+				return StatusCode(500, new { message = "Error de autenticación" });
+			}
+		}
+
+		[Authorize]
+		[HttpGet("current-user")]
+		public IActionResult GetCurrentUser()
+		{
+			try
+			{
+				// Obtener claims del usuario autenticado
+				var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+				var email = User.FindFirstValue(ClaimTypes.Email);
+				var nombre = User.FindFirstValue(ClaimTypes.Name);
+				var rol = User.FindFirstValue(ClaimTypes.Role);
+
+				if (string.IsNullOrEmpty(userId))
+				{
+					return Unauthorized(new { message = "No autenticado" });
+				}
+
+				return Ok(new
+				{
+					user = new
+					{
+						id = int.Parse(userId),
+						email,
+						nombre,
+						rol
+					}
+				});
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error en autenticación de Google: {Message}", ex.Message);
-				return StatusCode(500, new { message = "Error de autenticación", error = ex.Message });
+				_logger.LogError(ex, "Error al obtener usuario actual");
+				return StatusCode(500, new { message = "Error interno" });
 			}
 		}
 
@@ -121,66 +165,21 @@ namespace Servidor_Sistema_Geologia.Controllers
 			return Unauthorized(new { message = "Acceso denegado. No tienes permisos suficientes." });
 		}
 
-		[HttpGet("current-user")]
-		public async Task<IActionResult> GetCurrentUser()
-		{
-			try
-			{
-				// Verificar si existen las cookies de sesión
-				if (!Request.Cookies.TryGetValue("user_id", out var userIdStr) ||
-					!Request.Cookies.TryGetValue("session", out var _))
-				{
-					return Unauthorized(new { message = "No autenticado" });
-				}
-
-				if (!int.TryParse(userIdStr, out var userId))
-				{
-					_logger.LogWarning("Formato de ID de usuario inválido en cookie");
-					return Unauthorized(new { message = "Sesión inválida" });
-				}
-
-				var user = await _context.Usuarios.FindAsync(userId);
-
-				if (user == null)
-				{
-					_logger.LogWarning("Usuario {UserId} no encontrado", userId);
-					return NotFound(new { message = "Usuario no encontrado" });
-				}
-
-				return Ok(new
-				{
-					user = new
-					{
-						id = user.Id,
-						nombre = user.NombreUsuario,
-						email = user.Email,
-						rol = user.Rol.ToString()
-					}
-				});
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error al obtener usuario actual");
-				return StatusCode(500, new { message = "Error al obtener información del usuario" });
-			}
-		}
-
 		[HttpPost("logout")]
-		public IActionResult Logout()
+		public async Task<IActionResult> Logout()
 		{
 			try
 			{
-				// Eliminar cookies
-				Response.Cookies.Delete("session", new CookieOptions
-				{
-					Secure = HttpContext.Request.IsHttps,
-					SameSite = SameSiteMode.Lax
-				});
+				// Sign out from the authentication system
+				await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
+				// Delete the user_id cookie with matching attributes
 				Response.Cookies.Delete("user_id", new CookieOptions
 				{
-					Secure = HttpContext.Request.IsHttps,
-					SameSite = SameSiteMode.Lax
+					HttpOnly = false,
+					Secure = false,
+					SameSite = SameSiteMode.Lax,
+					Path = "/"
 				});
 
 				return Ok(new { message = "Cierre de sesión exitoso" });
@@ -196,8 +195,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[HttpGet("check")]
 		public IActionResult CheckAuth()
 		{
-			bool isAuthenticated = Request.Cookies.ContainsKey("session") &&
-								  Request.Cookies.ContainsKey("user_id");
+			bool isAuthenticated = User.Identity?.IsAuthenticated ?? false;
 
 			return Ok(new { isAuthenticated });
 		}
