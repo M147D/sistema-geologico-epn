@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Servidor_Sistema_Geologia.Models;
-using Servidor_Sistema_Geologia.DTO;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Servidor_Sistema_Geologia.Application;
+using Servidor_Sistema_Geologia.DTO;
+using Servidor_Sistema_Geologia.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Servidor_Sistema_Geologia.Controllers
 {
@@ -10,127 +12,109 @@ namespace Servidor_Sistema_Geologia.Controllers
 	[ApiController]
 	public class FosilesController : ControllerBase
 	{
-		private readonly IElementoService<Fosil, FosilDto, FosilDto> _fosilService;
-		private readonly ILogger<FosilesController> _logger;
+		private readonly IElementoService<Fosil, FosilDto, CreateFosilDto> _fosilService;
 
-		// Constructor que recibe el servicio en lugar del contexto
-		public FosilesController(IElementoService<Fosil, FosilDto, FosilDto> fosilService, ILogger<FosilesController> logger)
+		public FosilesController(IElementoService<Fosil, FosilDto, CreateFosilDto> fosilService)
 		{
-			_fosilService = fosilService ?? throw new ArgumentNullException(nameof(fosilService));
-			_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-		}
-
-		// Método privado para obtener el ID del usuario actual
-		private int GetCurrentUserId()
-		{
-			if (!Request.Cookies.TryGetValue("user_id", out var userIdStr) ||
-				!int.TryParse(userIdStr, out var userId))
-			{
-				throw new UnauthorizedAccessException("Usuario no autenticado o ID no válido");
-			}
-			return userId;
+			_fosilService = fosilService;
 		}
 
 		// GET: api/Fosiles
 		[HttpGet]
-		[Authorize(Roles = "Free")]
+		//[Authorize]
 		public async Task<ActionResult<IEnumerable<FosilDto>>> GetFosiles()
 		{
-			try
+			// Obtener ID de usuario de la cookie
+			if (!TryGetUsuarioId(out int usuarioId))
 			{
-				int usuarioId = GetCurrentUserId();
-				var fosiles = await _fosilService.GetAllAsync(usuarioId);
-				return Ok(fosiles);
+				return Unauthorized("Usuario no autenticado");
 			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Unauthorized(new { message = ex.Message });
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error al obtener fósiles");
-				return StatusCode(500, new { message = "Error al obtener fósiles" });
-			}
+
+			var fosiles = await _fosilService.GetAllAsync(usuarioId);
+			return Ok(fosiles);
 		}
 
 		// GET: api/Fosiles/5
 		[HttpGet("{id}")]
-		[Authorize(Roles = "Free")]
+		[Authorize]
 		public async Task<ActionResult<FosilDto>> GetFosil(int id)
+		{
+			// Obtener ID de usuario de la cookie
+			if (!TryGetUsuarioId(out int usuarioId))
+			{
+				return Unauthorized("Usuario no autenticado");
+			}
+
+			var fosil = await _fosilService.GetByIdAsync(id, usuarioId);
+
+			if (fosil == null)
+			{
+				return NotFound();
+			}
+
+			return fosil;
+		}
+
+		// POST: api/Fosiles
+		[HttpPost]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<FosilDto>> PostFosil(CreateFosilDto createFosilDto)
 		{
 			try
 			{
-				int usuarioId = GetCurrentUserId();
-				var fosil = await _fosilService.GetByIdAsync(id, usuarioId);
-
-				if (fosil == null)
+				// Validar los datos recibidos
+				if (string.IsNullOrEmpty(createFosilDto.Especie))
 				{
-					return NotFound();
+					return BadRequest("La especie del fósil es obligatoria");
 				}
 
-				return Ok(fosil);
+				// Asegurarse de que el UsuarioId esté establecido, o tomarlo de la cookie
+				if (createFosilDto.UsuarioId <= 0)
+				{
+					if (!TryGetUsuarioId(out int usuarioId))
+					{
+						return Unauthorized("Usuario no autenticado");
+					}
+					createFosilDto.UsuarioId = usuarioId;
+				}
+
+				var fosil = await _fosilService.CreateElementoConAccesoAsync(createFosilDto, createFosilDto.UsuarioId);
+
+				var fosilDto = await _fosilService.GetByIdAsync(fosil.Id, createFosilDto.UsuarioId);
+
+				return CreatedAtAction(nameof(GetFosil), new { id = fosil.Id }, fosilDto);
 			}
-			catch (UnauthorizedAccessException ex)
+			catch (System.Exception ex)
 			{
-				return Unauthorized(new { message = ex.Message });
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error al obtener fósil {Id}", id);
-				return StatusCode(500, new { message = "Error al obtener fósil" });
+				return BadRequest($"Error al crear el fósil: {ex.Message}");
 			}
 		}
 
 		// PUT: api/Fosiles/5
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Admin")]
-		public async Task<IActionResult> PutFosil(int id, FosilDto fosilDto)
+		public async Task<IActionResult> PutFosil(int id, CreateFosilDto updateFosilDto)
 		{
-			if (id != fosilDto.Id)
+			// Obtener ID de usuario de la cookie
+			if (!TryGetUsuarioId(out int usuarioId))
 			{
-				return BadRequest();
+				return Unauthorized("Usuario no autenticado");
 			}
+
+			updateFosilDto.UsuarioId = usuarioId;
 
 			try
 			{
-				int usuarioId = GetCurrentUserId();
-				var actualizado = await _fosilService.UpdateAsync(id, fosilDto, usuarioId);
-				return Ok(actualizado);
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Unauthorized(new { message = ex.Message });
+				var fosil = await _fosilService.UpdateAsync(id, updateFosilDto, usuarioId);
+				return NoContent();
 			}
 			catch (KeyNotFoundException)
 			{
 				return NotFound();
 			}
-			catch (Exception ex)
+			catch (System.Exception ex)
 			{
-				_logger.LogError(ex, "Error al actualizar fósil {Id}", id);
-				return StatusCode(500, new { message = "Error al actualizar fósil" });
-			}
-		}
-
-		// POST: api/Fosiles
-		[HttpPost]
-		[Authorize(Roles = "Admin")]
-		public async Task<ActionResult<FosilDto>> PostFosil(FosilDto fosilDto)
-		{
-			try
-			{
-				int usuarioId = GetCurrentUserId();
-				var fosilCreado = await _fosilService.CreateElementoConAccesoAsync(fosilDto, usuarioId);
-				return CreatedAtAction("GetFosil", new { id = fosilCreado.Id }, fosilCreado);
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Unauthorized(new { message = ex.Message });
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error al crear fósil");
-				return StatusCode(500, new { message = "Error al crear fósil" });
+				return BadRequest($"Error al actualizar el fósil: {ex.Message}");
 			}
 		}
 
@@ -139,25 +123,41 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> DeleteFosil(int id)
 		{
+			// Obtener ID de usuario de la cookie
+			if (!TryGetUsuarioId(out int usuarioId))
+			{
+				return Unauthorized("Usuario no autenticado");
+			}
+
 			try
 			{
-				int usuarioId = GetCurrentUserId();
 				await _fosilService.DeleteAsync(id, usuarioId);
-				return Ok($"Fósil con ID {id} eliminado.");
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Unauthorized(new { message = ex.Message });
+				return NoContent();
 			}
 			catch (KeyNotFoundException)
 			{
 				return NotFound();
 			}
-			catch (Exception ex)
+			catch (System.Exception ex)
 			{
-				_logger.LogError(ex, "Error al eliminar fósil {Id}", id);
-				return StatusCode(500, new { message = "Error al eliminar fósil" });
+				return BadRequest($"Error al eliminar el fósil: {ex.Message}");
 			}
+		}
+
+		// Método auxiliar para obtener el ID de usuario de la cookie
+		private bool TryGetUsuarioId(out int usuarioId)
+		{
+			usuarioId = 0;
+
+			// Obtener la cookie de user_id
+			if (Request.Cookies.TryGetValue("user_id", out string userIdStr) &&
+				int.TryParse(userIdStr, out usuarioId) &&
+				usuarioId > 0)
+			{
+				return true;
+			}
+
+			return false;
 		}
 	}
 }
