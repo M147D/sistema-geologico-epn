@@ -57,8 +57,7 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Nombres = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Apellidos = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    NombreCompleto = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     NombreUsuario = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Rol = table.Column<string>(type: "nvarchar(max)", nullable: false)
@@ -155,7 +154,7 @@ namespace Servidor_Sistema_Geologia.Migrations
                     Nombre = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Edad = table.Column<int>(type: "int", nullable: true),
                     Donante = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    FechaIngreso = table.Column<int>(type: "int", nullable: true),
+                    FechaIngreso = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Codigo = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Ejemplares = table.Column<int>(type: "int", nullable: true),
                     DocumentosRelacionados = table.Column<string>(type: "nvarchar(max)", nullable: true),
