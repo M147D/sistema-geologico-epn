@@ -8,9 +8,7 @@ namespace Servidor_Sistema_Geologia.Models
 		[Key]
 		public int Id { get; set; }
 
-		public string? Nombres { get; set; }
-
-		public string? Apellidos { get; set; }
+		public string? NombreCompleto { get; set; }
 
 		public string? NombreUsuario { get; set; }
 

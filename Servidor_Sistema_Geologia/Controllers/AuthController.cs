@@ -59,8 +59,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 					{
 						Email = payload.Email,
 						NombreUsuario = payload.Name,
-						Nombres = payload.GivenName,
-						Apellidos = payload.FamilyName,
+						NombreCompleto = payload.GivenName + payload.FamilyName,
 						Rol = RolUsuario.Free
 					};
 					_context.Usuarios.Add(user);
