@@ -1,5 +1,4 @@
-﻿// 4. Actualizamos RocaService para usar CreateRocaDto
-using AutoMapper;
+﻿using AutoMapper;
 using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Models;
@@ -24,31 +23,10 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 		protected override Roca ConvertToEntity(CreateRocaDto dto)
 		{
 			// 1. Buscar o crear el país
-			var pais = _db.Paises
-				.FirstOrDefault(p => p.NombrePais == dto.NombrePais);
-
-			if (pais == null && !string.IsNullOrEmpty(dto.NombrePais))
-			{
-				pais = new Pais { NombrePais = dto.NombrePais };
-				_db.Paises.Add(pais);
-				_db.SaveChanges();
-			}
+			var pais = ObtenerOCrearPais(dto.NombrePais);
 
 			// 2. Buscar o crear la provincia
-			var provincia = _db.Provincias
-				.FirstOrDefault(p => p.NombreProvincia == dto.NombreProvincia &&
-									p.PaisId == pais.Id);
-
-			if (provincia == null && !string.IsNullOrEmpty(dto.NombreProvincia) && pais != null)
-			{
-				provincia = new Provincia
-				{
-					NombreProvincia = dto.NombreProvincia,
-					PaisId = pais.Id
-				};
-				_db.Provincias.Add(provincia);
-				_db.SaveChanges();
-			}
+			var provincia = ObtenerOCrearProvincia(dto.NombreProvincia, pais?.Id);
 
 			// 3. Crear la ubicación
 			var ubicacion = new Ubicacion
@@ -63,16 +41,8 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			_db.Ubicaciones.Add(ubicacion);
 			_db.SaveChanges();
 
-			// 4. Crear el estado del elemento
-			EstadoElemento estadoElemento;
-			if (Enum.TryParse<EstadosElemento>(dto.DescripcionEstado, out var estado))
-			{
-				estadoElemento = new EstadoElemento { DescripcionEstado = estado };
-			}
-			else
-			{
-				estadoElemento = new EstadoElemento { DescripcionEstado = EstadosElemento.Creado };
-			}
+			// 4. Crear el estado del elemento (siempre Creado para nuevos elementos)
+			var estadoElemento = new EstadoElemento { DescripcionEstado = EstadosElemento.Creado };
 			_db.EstadosElementos.Add(estadoElemento);
 			_db.SaveChanges();
 
@@ -92,7 +62,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				Nombre = dto.Nombre,
 				Edad = dto.Edad,
 				Donante = dto.Donante,
-				FechaIngreso = dto.FechaIngreso,
+				FechaIngreso = DateTime.Now,
 				Codigo = dto.Codigo,
 				Ejemplares = dto.Ejemplares,
 				DocumentosRelacionados = dto.DocumentosRelacionados,
@@ -115,7 +85,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			roca.Nombre = dto.Nombre;
 			roca.Edad = dto.Edad;
 			roca.Donante = dto.Donante;
-			roca.FechaIngreso = dto.FechaIngreso;
 			roca.Codigo = dto.Codigo;
 			roca.Ejemplares = dto.Ejemplares;
 			roca.DocumentosRelacionados = dto.DocumentosRelacionados;
@@ -132,39 +101,57 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				ActualizarUbicacion(roca, dto);
 			}
 
-			// Actualizar estado si se proporcionó
-			if (!string.IsNullOrEmpty(dto.DescripcionEstado))
-			{
-				ActualizarEstado(roca, dto);
-			}
+			// Cambiar el estado a modificado
+			ActualizarEstadoAModificado(roca);
 
 			_db.SaveChanges();
+		}
+
+		private Pais ObtenerOCrearPais(string nombrePais)
+		{
+			if (string.IsNullOrEmpty(nombrePais))
+				return null;
+
+			var pais = _db.Paises.FirstOrDefault(p => p.NombrePais == nombrePais);
+
+			if (pais == null)
+			{
+				pais = new Pais { NombrePais = nombrePais };
+				_db.Paises.Add(pais);
+				_db.SaveChanges();
+			}
+
+			return pais;
+		}
+
+		private Provincia ObtenerOCrearProvincia(string nombreProvincia, int? paisId)
+		{
+			if (string.IsNullOrEmpty(nombreProvincia) || !paisId.HasValue)
+				return null;
+
+			var provincia = _db.Provincias
+				.FirstOrDefault(p => p.NombreProvincia == nombreProvincia &&
+									 p.PaisId == paisId.Value);
+
+			if (provincia == null)
+			{
+				provincia = new Provincia
+				{
+					NombreProvincia = nombreProvincia,
+					PaisId = paisId.Value
+				};
+				_db.Provincias.Add(provincia);
+				_db.SaveChanges();
+			}
+
+			return provincia;
 		}
 
 		private void ActualizarUbicacion(Roca roca, CreateRocaDto dto)
 		{
 			// Lógica para actualizar o crear ubicación
-			var pais = _db.Paises.FirstOrDefault(p => p.NombrePais == dto.NombrePais);
-			if (pais == null && !string.IsNullOrEmpty(dto.NombrePais))
-			{
-				pais = new Pais { NombrePais = dto.NombrePais };
-				_db.Paises.Add(pais);
-				_db.SaveChanges();
-			}
-
-			var provincia = _db.Provincias.FirstOrDefault(p =>
-				p.NombreProvincia == dto.NombreProvincia && p.PaisId == pais.Id);
-
-			if (provincia == null && !string.IsNullOrEmpty(dto.NombreProvincia) && pais != null)
-			{
-				provincia = new Provincia
-				{
-					NombreProvincia = dto.NombreProvincia,
-					PaisId = pais.Id
-				};
-				_db.Provincias.Add(provincia);
-				_db.SaveChanges();
-			}
+			var pais = ObtenerOCrearPais(dto.NombrePais);
+			var provincia = ObtenerOCrearProvincia(dto.NombreProvincia, pais?.Id);
 
 			// Verificar si la ubicación existe
 			if (roca.UbicacionId.HasValue)
@@ -211,26 +198,27 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			roca.UbicacionId = nuevaUbicacion.Id;
 		}
 
-		private void ActualizarEstado(Roca roca, CreateRocaDto dto)
+		private void ActualizarEstadoAModificado(Roca roca)
 		{
-			if (Enum.TryParse<EstadosElemento>(dto.DescripcionEstado, out var estado))
+			if (roca.EstadoElementoId.HasValue)
 			{
-				if (roca.EstadoElementoId.HasValue)
+				var estadoElemento = _db.EstadosElementos.Find(roca.EstadoElementoId.Value);
+				if (estadoElemento != null)
 				{
-					var estadoElemento = _db.EstadosElementos.Find(roca.EstadoElementoId.Value);
-					if (estadoElemento != null)
+					// Solo actualizar si no está eliminado
+					if (estadoElemento.DescripcionEstado != EstadosElemento.Eliminado)
 					{
-						estadoElemento.DescripcionEstado = estado;
-					}
-					else
-					{
-						CrearNuevoEstado(roca, estado);
+						estadoElemento.DescripcionEstado = EstadosElemento.Modificado;
 					}
 				}
 				else
 				{
-					CrearNuevoEstado(roca, estado);
+					CrearNuevoEstado(roca, EstadosElemento.Modificado);
 				}
+			}
+			else
+			{
+				CrearNuevoEstado(roca, EstadosElemento.Modificado);
 			}
 		}
 

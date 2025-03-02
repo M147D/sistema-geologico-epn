@@ -50,9 +50,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				.Where(e => e.EstadoElemento.DescripcionEstado != EstadosElemento.Eliminado)
 				.ToListAsync();
 
-			// Registramos solo un acceso por llamada a GetAll para no llenar la tabla con muchas entradas
-			await RegistrarAccesoAsync(usuarioId, null, AccionesUsuario.Visualizacion);
-
 			return elementos.Select(e => ConvertToDto(e));
 		}
 
@@ -128,14 +125,34 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Eliminacion);
 		}
 
-		// Método privado para registrar accesos
+		// Método privado para registrar accesos optimizando entradas de visualización
 		private async Task RegistrarAccesoAsync(int usuarioId, int? elementoId, AccionesUsuario accion)
 		{
+			// Si es una acción de visualización, intentamos actualizar un registro existente
+			if (accion == AccionesUsuario.Visualizacion && elementoId.HasValue)
+			{
+				// Buscar si ya existe un registro de visualización para este usuario y elemento
+				var accesoExistente = await _db.Accesos
+					.FirstOrDefaultAsync(a =>
+						a.UsuarioId == usuarioId &&
+						a.ElementoGeologicoId == elementoId &&
+						a.Accion == AccionesUsuario.Visualizacion);
+
+				if (accesoExistente != null)
+				{
+					// Actualizar la fecha del acceso existente
+					accesoExistente.FechaAcceso = DateTime.Now;
+					await _db.SaveChangesAsync();
+					return; // Terminamos aquí, ya que solo actualizamos
+				}
+			}
+
+			// Para acciones diferentes a visualización o si no existe un registro previo de visualización
 			var acceso = new Acceso
 			{
 				UsuarioId = usuarioId,
 				ElementoGeologicoId = elementoId,
-				FechaAcceso = DateTime.UtcNow,
+				FechaAcceso = DateTime.Now,
 				Accion = accion
 			};
 
