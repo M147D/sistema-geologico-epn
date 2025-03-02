@@ -19,7 +19,7 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public string? Donante { get; set; }
 
-		public int? FechaIngreso { get; set; }
+		public DateTime? FechaIngreso { get; set; }
 
 		public string? Codigo { get; set; }
 
