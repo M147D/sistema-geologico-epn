@@ -77,8 +77,8 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<int?>("EstadoElementoId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("FechaIngreso")
-                        .HasColumnType("int");
+                    b.Property<DateTime?>("FechaIngreso")
+                        .HasColumnType("datetime2");
 
                     b.Property<int?>("GaleriaElementosGeologicoId")
                         .HasColumnType("int");
@@ -275,16 +275,13 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Apellidos")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("NombreUsuario")
+                    b.Property<string>("NombreCompleto")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Nombres")
+                    b.Property<string>("NombreUsuario")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Rol")
