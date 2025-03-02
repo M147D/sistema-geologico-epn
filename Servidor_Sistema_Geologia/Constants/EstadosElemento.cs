@@ -3,7 +3,7 @@
 	public enum EstadosElemento
 	{
 		Creado,
-		Editado,
+		Modificado,
 		Eliminado
 	}
 }
