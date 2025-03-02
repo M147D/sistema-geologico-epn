@@ -15,9 +15,5 @@
 		// Referencias a IDs para mantener las relaciones
 		public int? PaisId { get; set; }
 		public int? ProvinciaId { get; set; }
-
-		// Campos adicionales para facilitar la creación
-		public string? NombrePais { get; set; }
-		public string? NombreProvincia { get; set; }
 	}
 }
