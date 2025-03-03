@@ -75,6 +75,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 
 			// 7. Actualizar la relación con la galería después de guardar la roca
 			galeria.ElementoGeologicoId = roca.Id;
+			_db.SaveChanges();
 
 			return roca;
 		}
@@ -104,7 +105,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			// Cambiar el estado a modificado
 			ActualizarEstadoAModificado(roca);
 
-			_db.SaveChanges();
+			_db.SaveChangesAsync();
 		}
 
 		private Pais ObtenerOCrearPais(string nombrePais)
