@@ -91,6 +91,12 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			_db.Set<TElemento>().Add(elemento);
 			await _db.SaveChangesAsync();
 
+			if (elemento.Galeria != null)
+			{
+				elemento.Galeria.ElementoGeologicoId = elemento.Id;
+				await _db.SaveChangesAsync();
+			}
+
 			return elemento;
 		}
 

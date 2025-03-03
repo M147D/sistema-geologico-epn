@@ -73,10 +73,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				GaleriaElementosGeologicoId = galeria.Id
 			};
 
-			// 7. Actualizar la relación con la galería después de guardar el fósil
-			galeria.ElementoGeologicoId = fosil.Id;
-			_db.SaveChanges();
-
 			return fosil;
 		}
 
