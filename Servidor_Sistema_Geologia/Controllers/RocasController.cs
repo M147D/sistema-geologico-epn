@@ -24,14 +24,25 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize]
 		public async Task<ActionResult<IEnumerable<RocaDto>>> GetRocas()
 		{
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
+			try
 			{
-				return Unauthorized("Usuario no autenticado");
-			}
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
 
-			var rocas = await _rocaService.GetAllAsync(usuarioId);
-			return Ok(rocas);
+				var rocas = await _rocaService.GetAllAsync(usuarioId);
+				return Ok(rocas);
+			}
+			catch (KeyNotFoundException)
+			{
+				return NotFound("No se encontraron rocas");
+			}
+			catch (System.Exception ex)
+			{
+				return BadRequest($"Error al obtener las rocas: {ex.Message}");
+			}
 		}
 
 		// GET: api/Rocas/5
@@ -39,20 +50,27 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize]
 		public async Task<ActionResult<RocaDto>> GetRoca(int id)
 		{
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
+			try
 			{
-				return Unauthorized("Usuario no autenticado");
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
+				var roca = await _rocaService.GetByIdAsync(id, usuarioId);
+
+				if (roca == null)
+				{
+					return NotFound("Roca no encontrada");
+				}
+
+				return roca;
 			}
-
-			var roca = await _rocaService.GetByIdAsync(id, usuarioId);
-
-			if (roca == null)
+			catch (System.Exception ex)
 			{
-				return NotFound();
+				return BadRequest($"Error al obtener la roca: {ex.Message}");
 			}
-
-			return roca;
 		}
 
 		// POST: api/Rocas
@@ -98,22 +116,22 @@ namespace Servidor_Sistema_Geologia.Controllers
 				return BadRequest(ModelState);
 			}
 
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
-			{
-				return Unauthorized("Usuario no autenticado");
-			}
-
-			updateRocaDto.UsuarioId = usuarioId;
-
 			try
 			{
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
+				updateRocaDto.UsuarioId = usuarioId;
+
 				var roca = await _rocaService.UpdateAsync(id, updateRocaDto, usuarioId);
 				return NoContent();
 			}
 			catch (KeyNotFoundException)
 			{
-				return NotFound();
+				return NotFound("Roca no encontrada");
 			}
 			catch (System.Exception ex)
 			{
@@ -126,20 +144,20 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> DeleteRoca(int id)
 		{
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
-			{
-				return Unauthorized("Usuario no autenticado");
-			}
-
 			try
 			{
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
 				await _rocaService.DeleteAsync(id, usuarioId);
 				return NoContent();
 			}
 			catch (KeyNotFoundException)
 			{
-				return NotFound();
+				return NotFound("Roca no encontrada");
 			}
 			catch (System.Exception ex)
 			{
@@ -153,7 +171,8 @@ namespace Servidor_Sistema_Geologia.Controllers
 			usuarioId = 0;
 
 			// Obtener la cookie de user_id
-			if (Request.Cookies.TryGetValue("user_id", out string userIdStr) &&
+			if (Request.Cookies.TryGetValue("user_id", out string? userIdStr) &&
+				!string.IsNullOrEmpty(userIdStr) &&
 				int.TryParse(userIdStr, out usuarioId) &&
 				usuarioId > 0)
 			{
