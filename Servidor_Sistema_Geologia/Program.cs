@@ -67,9 +67,9 @@ builder.Services.AddCors(options =>
 		policy =>
 		{
 			policy.WithOrigins("http://localhost:5173") // URL del frontend (Vite)
-				  .AllowCredentials() // Permite cookies
 				  .AllowAnyHeader()
-				  .AllowAnyMethod();
+				  .AllowAnyMethod()
+				  .AllowCredentials(); // Permite cookies
 		});
 });
 
@@ -213,7 +213,7 @@ app.Use(async (context, next) =>
 	}
 });
 
-//app.UseAuthorization();
+app.UseAuthorization();
 
 app.MapControllers();
 
