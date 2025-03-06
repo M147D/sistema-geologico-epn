@@ -86,7 +86,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 		}
 
 		// Método para la creación del elemento
-		private async Task<TElemento> CreateAsync(TCreateDto dto)
+		public async Task<TElemento> CreateAsync(TCreateDto dto)
 		{
 			// Se inicia una transaccion para multiples operaciones en la BD y al finalizar se destruye
 			await using var transaction = await _db.Database.BeginTransactionAsync();
