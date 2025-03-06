@@ -23,7 +23,7 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public string? Codigo { get; set; }
 
-		public int? Ejemplares { get; set; }
+		public uint? Ejemplares { get; set; }
 
 		public string? DocumentosRelacionados { get; set; }
 
