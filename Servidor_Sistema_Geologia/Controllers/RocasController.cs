@@ -21,22 +21,22 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// GET: api/Rocas
 		[HttpGet]
-		//[Authorize]
+		[Authorize]
 		public async Task<ActionResult<IEnumerable<RocaDto>>> GetRocas()
 		{
 			// Obtener ID de usuario de la cookie
-			/*if (!TryGetUsuarioId(out int usuarioId))
+			if (!TryGetUsuarioId(out int usuarioId))
 			{
 				return Unauthorized("Usuario no autenticado");
-			}*/
+			}
 
-			var rocas = await _rocaService.GetAllAsync(1);
+			var rocas = await _rocaService.GetAllAsync(usuarioId);
 			return Ok(rocas);
 		}
 
 		// GET: api/Rocas/5
 		[HttpGet("{id}")]
-		//[Authorize]
+		[Authorize]
 		public async Task<ActionResult<RocaDto>> GetRoca(int id)
 		{
 			// Obtener ID de usuario de la cookie
@@ -57,24 +57,16 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// POST: api/Rocas
 		[HttpPost]
-		//[Authorize(Roles = "Admin")]
-		public async Task<ActionResult<RocaDto>> PostRoca(CreateRocaDto createRocaDto)
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<RocaDto>> PostRoca([FromBody] CreateRocaDto createRocaDto)
 		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest(ModelState);
+			}
+
 			try
 			{
-				// Validar los datos recibidos
-				var errors = new List<string>();
-
-				if (string.IsNullOrEmpty(createRocaDto.TipoRoca))
-				{
-					errors.Add("El tipo de roca es obligatorio");
-				}
-
-				if (string.IsNullOrEmpty(createRocaDto.Litologia))
-				{
-					errors.Add("La litologia de la roca es obligatoria");
-				}
-
 				// Asegurarse de que el UsuarioId esté establecido, o tomarlo de la cookie
 				if (createRocaDto.UsuarioId <= 0)
 				{
@@ -86,7 +78,6 @@ namespace Servidor_Sistema_Geologia.Controllers
 				}
 
 				var roca = await _rocaService.CreateElementoConAccesoAsync(createRocaDto, createRocaDto.UsuarioId);
-
 				var rocaDto = await _rocaService.GetByIdAsync(roca.Id, createRocaDto.UsuarioId);
 
 				return CreatedAtAction(nameof(GetRoca), new { id = roca.Id }, rocaDto);
@@ -99,9 +90,14 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// PUT: api/Rocas/5
 		[HttpPut("{id}")]
-		//[Authorize(Roles = "Admin")]
-		public async Task<IActionResult> PutRoca(int id, CreateRocaDto updateRocaDto)
+		[Authorize(Roles = "Admin")]
+		public async Task<IActionResult> PutRoca(int id, [FromBody] CreateRocaDto updateRocaDto)
 		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest(ModelState);
+			}
+
 			// Obtener ID de usuario de la cookie
 			if (!TryGetUsuarioId(out int usuarioId))
 			{
@@ -127,7 +123,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// DELETE: api/Rocas/5
 		[HttpDelete("{id}")]
-		//[Authorize(Roles = "Admin")]
+		[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> DeleteRoca(int id)
 		{
 			// Obtener ID de usuario de la cookie
