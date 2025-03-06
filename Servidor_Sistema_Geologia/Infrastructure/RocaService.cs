@@ -3,6 +3,7 @@ using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Models;
 using Servidor_Sistema_Geologia.Constants;
+using Microsoft.EntityFrameworkCore;
 
 namespace Servidor_Sistema_Geologia.Infrastructure
 {
@@ -20,12 +21,11 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return _mapper.Map<RocaDto>(roca);
 		}
 
-		protected override Roca ConvertToEntity(CreateRocaDto dto)
+		protected override async Task<Roca> ConvertToEntity(CreateRocaDto dto)
 		{
 			// 1. Buscar o crear el país
 			var pais = ObtenerOCrearPais(dto.NombrePais);
 
-			// 2. Buscar o crear la provincia
 			var provincia = ObtenerOCrearProvincia(dto.NombreProvincia, pais?.Id);
 
 			// 3. Crear la ubicación
@@ -39,12 +39,12 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				ProvinciaId = provincia?.Id
 			};
 			_db.Ubicaciones.Add(ubicacion);
-			_db.SaveChanges();
+			await _db.SaveChangesAsync();
 
-			// 4. Crear el estado del elemento (siempre Creado para nuevos elementos)
+			// 4. Crear el estado del elemento
 			var estadoElemento = new EstadoElemento { DescripcionEstado = EstadosElemento.Creado };
 			_db.EstadosElementos.Add(estadoElemento);
-			_db.SaveChanges();
+			await _db.SaveChangesAsync();
 
 			// 5. Crear galería para el elemento
 			var galeria = new GaleriaElementoGeologico
@@ -52,9 +52,9 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				DetalleGrupo = $"Galería de {dto.Nombre}"
 			};
 			_db.GaleriaElementosGeologicos.Add(galeria);
-			_db.SaveChanges();
+			await _db.SaveChangesAsync();
 
-			// 6. Crear la roca
+			// 6. Crear el roca
 			var roca = new Roca
 			{
 				TipoRoca = dto.TipoRoca,
@@ -70,7 +70,8 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				LaminaExiste = dto.LaminaExiste,
 				UbicacionId = ubicacion.Id,
 				EstadoElementoId = estadoElemento.Id,
-				GaleriaElementosGeologicoId = galeria.Id
+				GaleriaElementosGeologicoId = galeria.Id,
+				Galeria = galeria
 			};
 
 			return roca;

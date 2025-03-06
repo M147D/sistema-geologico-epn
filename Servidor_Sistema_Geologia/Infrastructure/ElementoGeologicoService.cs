@@ -5,6 +5,7 @@ using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.Models;
 using Servidor_Sistema_Geologia.Application;
 using Servidor_Sistema_Geologia.DTO;
+using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Servidor_Sistema_Geologia.Infrastructure
 {
@@ -75,6 +76,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 
 		public async Task<TElemento> CreateElementoConAccesoAsync(TCreateDto dto, int usuarioId)
 		{
+			// Creacion y obtecion del elemento
 			var elemento = await CreateAsync(dto);
 
 			// Registrar acceso de creación
@@ -83,21 +85,52 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return elemento;
 		}
 
-		public async Task<TElemento> CreateAsync(TCreateDto dto)
+		// Método para la creación del elemento
+		private async Task<TElemento> CreateAsync(TCreateDto dto)
 		{
-			// Este método debe ser implementado por clases derivadas
-			var elemento = ConvertToEntity(dto);
-
-			_db.Set<TElemento>().Add(elemento);
-			await _db.SaveChangesAsync();
-
-			if (elemento.Galeria != null)
+			// Se inicia una transaccion para multiples operaciones en la BD y al finalizar se destruye
+			await using var transaction = await _db.Database.BeginTransactionAsync();
+			try
 			{
-				elemento.Galeria.ElementoGeologicoId = elemento.Id;
-				await _db.SaveChangesAsync();
-			}
+				// Se convierte el DTO a la entidad elemento
+				var elemento = await ConvertToEntity(dto);
 
-			return elemento;
+				// Se añade el elemento al contexto de la BD
+				_db.Set<TElemento>().Add(elemento);
+				await _db.SaveChangesAsync();
+
+				// Se actualiza la información de la galeria
+				if (elemento.Galeria != null && elemento.Id > 0)
+				{
+					elemento.Galeria.ElementoGeologicoId = elemento.Id;
+					_db.Entry(elemento.Galeria).State = EntityState.Modified;
+					await _db.SaveChangesAsync();
+				}
+
+				// Se comprueba la existencia de las fotos en el dto
+				try
+				{
+					dynamic dynamicDto = dto;
+					if (dynamicDto.Fotos != null)
+					{
+						await GuardarFotosAsync(elemento.Id, dynamicDto.Fotos);
+					}
+				}
+				catch (Exception ex)
+				{
+					throw; // Relanza la excepción para que sea manejada por el bloque try/catch exterior
+				}
+
+				// Commit the transaction if all operations succeed
+				await transaction.CommitAsync();
+				return elemento;
+			}
+			catch (Exception)
+			{
+				// Rollback the transaction if any operation fails
+				await transaction.RollbackAsync();
+				throw;
+			}
 		}
 
 		public async Task DeleteAsync(int id, int usuarioId)
@@ -131,9 +164,14 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			await RegistrarAccesoAsync(usuarioId, elemento.Id, AccionesUsuario.Eliminacion);
 		}
 
-		// Método privado para registrar accesos optimizando entradas de visualización
+		// Método privado para registrar accesos con contexto independiente y creación previa de objetos
 		private async Task RegistrarAccesoAsync(int usuarioId, int? elementoId, AccionesUsuario accion)
 		{
+			// Prepara los datos antes de interactuar con la base de datos
+			DateTime fechaAcceso = DateTime.Now;
+			Acceso accesoParaAgregar = null;
+
+
 			// Si es una acción de visualización, intentamos actualizar un registro existente
 			if (accion == AccionesUsuario.Visualizacion && elementoId.HasValue)
 			{
@@ -147,28 +185,30 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				if (accesoExistente != null)
 				{
 					// Actualizar la fecha del acceso existente
-					accesoExistente.FechaAcceso = DateTime.Now;
+					accesoExistente.FechaAcceso = fechaAcceso;
 					await _db.SaveChangesAsync();
 					return; // Terminamos aquí, ya que solo actualizamos
 				}
 			}
 
-			// Para acciones diferentes a visualización o si no existe un registro previo de visualización
-			var acceso = new Acceso
+			// Creamos el objeto acceso fuera de las operaciones de DB
+			accesoParaAgregar = new Acceso
 			{
 				UsuarioId = usuarioId,
 				ElementoGeologicoId = elementoId,
-				FechaAcceso = DateTime.Now,
+				FechaAcceso = fechaAcceso,
 				Accion = accion
 			};
 
-			_db.Accesos.Add(acceso);
+			// Agregar a la base de datos
+			_db.Accesos.Add(accesoParaAgregar);
+
 			await _db.SaveChangesAsync();
 		}
 
 		// Métodos de conversión:
 		protected virtual TReadDto ConvertToDto(TElemento elemento) => throw new NotImplementedException();
-		protected virtual TElemento ConvertToEntity(TCreateDto dto) => throw new NotImplementedException();
+		protected virtual async Task<TElemento> ConvertToEntity(TCreateDto dto) => throw new NotImplementedException();
 		protected virtual void UpdateEntity(TElemento elemento, TCreateDto dto) => throw new NotImplementedException();
 	}
 }
