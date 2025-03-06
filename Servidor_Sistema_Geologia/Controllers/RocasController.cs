@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using Servidor_Sistema_Geologia.Models;
-using Servidor_Sistema_Geologia.DTO;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Servidor_Sistema_Geologia.Application;
+using Servidor_Sistema_Geologia.DTO;
+using Servidor_Sistema_Geologia.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Servidor_Sistema_Geologia.Controllers
 {
@@ -11,38 +13,36 @@ namespace Servidor_Sistema_Geologia.Controllers
 	public class RocasController : ControllerBase
 	{
 		private readonly IElementoService<Roca, RocaDto, CreateRocaDto> _rocaService;
-		private readonly ILogger<RocasController> _logger;
 
-		public RocasController(
-			IElementoService<Roca, RocaDto, CreateRocaDto> rocaService,
-			ILogger<RocasController> logger)
+		public RocasController(IElementoService<Roca, RocaDto, CreateRocaDto> rocaService)
 		{
 			_rocaService = rocaService;
-			_logger = logger;
 		}
 
 		// GET: api/Rocas
 		[HttpGet]
+		//[Authorize]
 		public async Task<ActionResult<IEnumerable<RocaDto>>> GetRocas()
 		{
-			if (!TryGetUsuarioId(out int usuarioId))
+			// Obtener ID de usuario de la cookie
+			/*if (!TryGetUsuarioId(out int usuarioId))
 			{
-				usuarioId = 1; // Valor por defecto para pruebas
-				_logger.LogWarning("No se encontró un ID de usuario en la cookie. Usando valor por defecto: {UsuarioId}", usuarioId);
-			}
+				return Unauthorized("Usuario no autenticado");
+			}*/
 
-			var rocas = await _rocaService.GetAllAsync(usuarioId);
+			var rocas = await _rocaService.GetAllAsync(1);
 			return Ok(rocas);
 		}
 
 		// GET: api/Rocas/5
 		[HttpGet("{id}")]
+		//[Authorize]
 		public async Task<ActionResult<RocaDto>> GetRoca(int id)
 		{
+			// Obtener ID de usuario de la cookie
 			if (!TryGetUsuarioId(out int usuarioId))
 			{
-				usuarioId = 1; // Valor por defecto para pruebas
-				_logger.LogWarning("No se encontró un ID de usuario en la cookie. Usando valor por defecto: {UsuarioId}", usuarioId);
+				return Unauthorized("Usuario no autenticado");
 			}
 
 			var roca = await _rocaService.GetByIdAsync(id, usuarioId);
@@ -57,75 +57,61 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 		// POST: api/Rocas
 		[HttpPost]
+		//[Authorize(Roles = "Admin")]
 		public async Task<ActionResult<RocaDto>> PostRoca(CreateRocaDto createRocaDto)
 		{
 			try
 			{
-				// Log para depuración
-				_logger.LogInformation("Recibiendo datos para crear roca: {@RocaDto}", createRocaDto);
+				// Validar los datos recibidos
+				var errors = new List<string>();
 
-				// Validar datos obligatorios
 				if (string.IsNullOrEmpty(createRocaDto.TipoRoca))
 				{
-					return BadRequest("El tipo de roca es obligatorio");
+					errors.Add("El tipo de roca es obligatorio");
 				}
 
-				if (string.IsNullOrEmpty(createRocaDto.Nombre))
+				if (string.IsNullOrEmpty(createRocaDto.Litologia))
 				{
-					createRocaDto.Nombre = $"Muestra de {createRocaDto.TipoRoca}";
-					_logger.LogInformation("Nombre generado automáticamente: {Nombre}", createRocaDto.Nombre);
+					errors.Add("La litologia de la roca es obligatoria");
 				}
 
-				// Asegurarse de que tengamos un usuario
+				// Asegurarse de que el UsuarioId esté establecido, o tomarlo de la cookie
 				if (createRocaDto.UsuarioId <= 0)
 				{
 					if (!TryGetUsuarioId(out int usuarioId))
 					{
-						usuarioId = 1; // Valor por defecto para pruebas
-						_logger.LogWarning("No se encontró un ID de usuario en la cookie. Usando valor por defecto: {UsuarioId}", usuarioId);
+						return Unauthorized("Usuario no autenticado");
 					}
 					createRocaDto.UsuarioId = usuarioId;
 				}
 
-				// Establecer estado por defecto si no se proporciona
-				if (string.IsNullOrEmpty(createRocaDto.DescripcionEstado))
-				{
-					createRocaDto.DescripcionEstado = "Creado";
-					_logger.LogInformation("Estado establecido por defecto: {Estado}", createRocaDto.DescripcionEstado);
-				}
-
-				// Crear la roca
-				_logger.LogInformation("Creando roca con datos: {@RocaDto}", createRocaDto);
 				var roca = await _rocaService.CreateElementoConAccesoAsync(createRocaDto, createRocaDto.UsuarioId);
 
-				// Obtener la roca creada
 				var rocaDto = await _rocaService.GetByIdAsync(roca.Id, createRocaDto.UsuarioId);
 
-				_logger.LogInformation("Roca creada exitosamente con ID: {Id}", roca.Id);
 				return CreatedAtAction(nameof(GetRoca), new { id = roca.Id }, rocaDto);
 			}
 			catch (System.Exception ex)
 			{
-				_logger.LogError(ex, "Error al crear la roca");
 				return BadRequest($"Error al crear la roca: {ex.Message}");
 			}
 		}
 
 		// PUT: api/Rocas/5
 		[HttpPut("{id}")]
+		//[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> PutRoca(int id, CreateRocaDto updateRocaDto)
 		{
+			// Obtener ID de usuario de la cookie
 			if (!TryGetUsuarioId(out int usuarioId))
 			{
-				usuarioId = 1; // Valor por defecto para pruebas
-				_logger.LogWarning("No se encontró un ID de usuario en la cookie. Usando valor por defecto: {UsuarioId}", usuarioId);
+				return Unauthorized("Usuario no autenticado");
 			}
 
 			updateRocaDto.UsuarioId = usuarioId;
 
 			try
 			{
-				_logger.LogInformation("Actualizando roca con ID {Id}: {@RocaDto}", id, updateRocaDto);
 				var roca = await _rocaService.UpdateAsync(id, updateRocaDto, usuarioId);
 				return NoContent();
 			}
@@ -135,24 +121,23 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (System.Exception ex)
 			{
-				_logger.LogError(ex, "Error al actualizar la roca con ID {Id}", id);
 				return BadRequest($"Error al actualizar la roca: {ex.Message}");
 			}
 		}
 
 		// DELETE: api/Rocas/5
 		[HttpDelete("{id}")]
+		//[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> DeleteRoca(int id)
 		{
+			// Obtener ID de usuario de la cookie
 			if (!TryGetUsuarioId(out int usuarioId))
 			{
-				usuarioId = 1; // Valor por defecto para pruebas
-				_logger.LogWarning("No se encontró un ID de usuario en la cookie. Usando valor por defecto: {UsuarioId}", usuarioId);
+				return Unauthorized("Usuario no autenticado");
 			}
 
 			try
 			{
-				_logger.LogInformation("Eliminando roca con ID {Id}", id);
 				await _rocaService.DeleteAsync(id, usuarioId);
 				return NoContent();
 			}
@@ -162,7 +147,6 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 			catch (System.Exception ex)
 			{
-				_logger.LogError(ex, "Error al eliminar la roca con ID {Id}", id);
 				return BadRequest($"Error al eliminar la roca: {ex.Message}");
 			}
 		}
