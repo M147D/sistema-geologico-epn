@@ -20,7 +20,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return _mapper.Map<FosilDto>(fosil);
 		}
 
-		protected override Fosil ConvertToEntity(CreateFosilDto dto)
+		protected override async Task<Fosil> ConvertToEntity(CreateFosilDto dto)
 		{
 			// 1. Buscar o crear el país
 			var pais = ObtenerOCrearPais(dto.NombrePais);
@@ -39,12 +39,12 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				ProvinciaId = provincia?.Id
 			};
 			_db.Ubicaciones.Add(ubicacion);
-			_db.SaveChanges();
+			await _db.SaveChangesAsync();
 
-			// 4. Crear el estado del elemento (siempre Creado para nuevos elementos)
+			// 4. Crear el estado del elemento
 			var estadoElemento = new EstadoElemento { DescripcionEstado = EstadosElemento.Creado };
 			_db.EstadosElementos.Add(estadoElemento);
-			_db.SaveChanges();
+			await _db.SaveChangesAsync();
 
 			// 5. Crear galería para el elemento
 			var galeria = new GaleriaElementoGeologico
@@ -52,7 +52,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				DetalleGrupo = $"Galería de {dto.Nombre}"
 			};
 			_db.GaleriaElementosGeologicos.Add(galeria);
-			_db.SaveChanges();
+			await _db.SaveChangesAsync();
 
 			// 6. Crear el fósil
 			var fosil = new Fosil
@@ -70,7 +70,8 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				LaminaExiste = dto.LaminaExiste,
 				UbicacionId = ubicacion.Id,
 				EstadoElementoId = estadoElemento.Id,
-				GaleriaElementosGeologicoId = galeria.Id
+				GaleriaElementosGeologicoId = galeria.Id,
+				Galeria = galeria
 			};
 
 			return fosil;
