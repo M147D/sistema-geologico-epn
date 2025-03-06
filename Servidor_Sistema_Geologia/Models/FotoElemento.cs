@@ -9,7 +9,7 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public int? GaleriaElementosGeologicoId { get; set; }
 
-		public byte[]? Imagen { get; set; }
+		public byte[]? Imagen { get; set; }  
 
 		public string? TipoFoto { get; set; }
 
