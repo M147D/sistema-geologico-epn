@@ -24,14 +24,25 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize]
 		public async Task<ActionResult<IEnumerable<FosilDto>>> GetFosiles()
 		{
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
+			try
 			{
-				return Unauthorized("Usuario no autenticado");
-			}
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
 
-			var fosiles = await _fosilService.GetAllAsync(usuarioId);
-			return Ok(fosiles);
+				var fosiles = await _fosilService.GetAllAsync(usuarioId);
+				return Ok(fosiles);
+			}
+			catch (KeyNotFoundException)
+			{
+				return NotFound("No se encontraron fósiles");
+			}
+			catch (System.Exception ex)
+			{
+				return BadRequest($"Error al obtener los fósiles: {ex.Message}");
+			}
 		}
 
 		// GET: api/Fosiles/5
@@ -39,20 +50,27 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize]
 		public async Task<ActionResult<FosilDto>> GetFosil(int id)
 		{
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
+			try
 			{
-				return Unauthorized("Usuario no autenticado");
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
+				var fosil = await _fosilService.GetByIdAsync(id, usuarioId);
+
+				if (fosil == null)
+				{
+					return NotFound();
+				}
+
+				return fosil;
 			}
-
-			var fosil = await _fosilService.GetByIdAsync(id, usuarioId);
-
-			if (fosil == null)
+			catch (System.Exception ex)
 			{
-				return NotFound();
+				return BadRequest($"Error al obtener el fósil: {ex.Message}");
 			}
-
-			return fosil;
 		}
 
 		// POST: api/Fosiles
@@ -78,9 +96,9 @@ namespace Servidor_Sistema_Geologia.Controllers
 				}
 
 				var fosil = await _fosilService.CreateElementoConAccesoAsync(createFosilDto, createFosilDto.UsuarioId);
-				var fosilDto = await _fosilService.GetByIdAsync(fosil.Id, createFosilDto.UsuarioId);
+				//var fosilDto = await _fosilService.GetByIdAsync(fosil.Id, createFosilDto.UsuarioId);
 
-				return CreatedAtAction(nameof(GetFosil), new { id = fosil.Id }, fosilDto);
+				return CreatedAtAction(nameof(GetFosil), new { id = fosil.Id }/*, fosilDto*/);
 			}
 			catch (System.Exception ex)
 			{
@@ -98,22 +116,22 @@ namespace Servidor_Sistema_Geologia.Controllers
 				return BadRequest(ModelState);
 			}
 
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
-			{
-				return Unauthorized("Usuario no autenticado");
-			}
-
-			updateFosilDto.UsuarioId = usuarioId;
-
 			try
 			{
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
+				updateFosilDto.UsuarioId = usuarioId;
+
 				var fosil = await _fosilService.UpdateAsync(id, updateFosilDto, usuarioId);
 				return NoContent();
 			}
 			catch (KeyNotFoundException)
 			{
-				return NotFound();
+				return NotFound("Fósil no encontrado");
 			}
 			catch (System.Exception ex)
 			{
@@ -126,20 +144,20 @@ namespace Servidor_Sistema_Geologia.Controllers
 		[Authorize(Roles = "Admin")]
 		public async Task<IActionResult> DeleteFosil(int id)
 		{
-			// Obtener ID de usuario de la cookie
-			if (!TryGetUsuarioId(out int usuarioId))
-			{
-				return Unauthorized("Usuario no autenticado");
-			}
-
 			try
 			{
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
 				await _fosilService.DeleteAsync(id, usuarioId);
 				return NoContent();
 			}
 			catch (KeyNotFoundException)
 			{
-				return NotFound();
+				return NotFound("Fósil no encontrado");
 			}
 			catch (System.Exception ex)
 			{
@@ -153,7 +171,8 @@ namespace Servidor_Sistema_Geologia.Controllers
 			usuarioId = 0;
 
 			// Obtener la cookie de user_id
-			if (Request.Cookies.TryGetValue("user_id", out string userIdStr) &&
+			if (Request.Cookies.TryGetValue("user_id", out string? userIdStr) &&
+				!string.IsNullOrEmpty(userIdStr) &&
 				int.TryParse(userIdStr, out usuarioId) &&
 				usuarioId > 0)
 			{
