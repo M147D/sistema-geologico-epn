@@ -4,7 +4,7 @@
 	{
 		public int Id { get; set; }
 		public string? Nombre { get; set; }
-		public int? Edad { get; set; }
+		public string? Edad { get; set; }
 		public string? Donante { get; set; }
 		public DateTime? FechaIngreso { get; set; }
 		public string? Codigo { get; set; }
