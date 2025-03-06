@@ -6,9 +6,7 @@ namespace Servidor_Sistema_Geologia.Models
 	{
 		[Key]
 		public int Id { get; set; }
-
 		public int? ProvinciaId { get; set; }
-
 		public int? PaisId { get; set; }
 
 		[StringLength(60)]
@@ -24,9 +22,7 @@ namespace Servidor_Sistema_Geologia.Models
 		public string? Leyenda { get; set; }
 
 		public Pais? Pais { get; set; }
-
 		public Provincia? Provincia { get; set; }
-
 		public List<ElementoGeologico> ElementosGeologicos { get; } = new List<ElementoGeologico>();
 	}
 }
