@@ -140,8 +140,7 @@ var authBuilder = builder.Services.AddAuthentication(options =>
 	};
 });
 
-// Agregar Google solo si la configuración está presente
-// CORREGIDO: Usar el builder de autenticación existente
+// Usar el builder de autenticación existente
 if (hasGoogleConfig)
 {
 	authBuilder.AddGoogle(options =>
@@ -156,7 +155,7 @@ if (hasGoogleConfig)
 	});
 }
 
-// MODIFICADO: Usar políticas de autorización más específicas
+// Usar políticas de autorización más específicas
 builder.Services.AddAuthorization(options =>
 {
 	options.AddPolicy("RequireAdminRole", policy =>
