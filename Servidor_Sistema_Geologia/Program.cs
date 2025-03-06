@@ -199,7 +199,7 @@ app.Use(async (context, next) =>
 	// Registrar estado de autenticación
 	var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
 	Console.WriteLine($"Solicitud a {context.Request.Path} - Autenticado: {isAuthenticated}");
-
+	
 	// Continuar con la solicitud
 	await next();
 
@@ -214,7 +214,7 @@ app.Use(async (context, next) =>
 	}
 });
 
-app.UseAuthorization();
+//app.UseAuthorization();
 
 app.MapControllers();
 
