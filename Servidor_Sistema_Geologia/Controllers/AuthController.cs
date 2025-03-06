@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Servidor_Sistema_Geologia.Constants;
 using Servidor_Sistema_Geologia.DAL;
-using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -99,7 +98,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 					HttpOnly = false,
 					Secure = false,
 					SameSite = SameSiteMode.Lax,
-					Expires = DateTimeOffset.UtcNow.AddDays(7),
+					Expires = DateTimeOffset.UtcNow.AddHours(7),
 					Path = "/"
 				});
 
