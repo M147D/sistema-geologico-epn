@@ -3,7 +3,6 @@
 	public class RocaDto : ElementoGeologicoDto
 	{
 		public string? TipoRoca { get; set; }
-
 		public string? Litologia { get; set; }
 	}
 }
