@@ -15,7 +15,7 @@ namespace Servidor_Sistema_Geologia.Models
 
 		public string? Nombre { get; set; }
 
-		public int? Edad { get; set; }
+		public ulong? Edad { get; set; }
 
 		public string? Donante { get; set; }
 
