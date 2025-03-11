@@ -24,8 +24,5 @@
 
 		// Usuario para registro de acceso
 		public int UsuarioId { get; set; }
-
-		// Fotos 
-		public List<CreateFotoElementoDto> Fotos { get; set; } = new List<CreateFotoElementoDto>();
 	}
 }

@@ -22,9 +22,6 @@
 		public string? NombreProvincia { get; set; }
 		public string? NombrePais { get; set; }
 
-		// Fotos 
-		public List<CreateFotoElementoDto> Fotos { get; set; } = new List<CreateFotoElementoDto>();
-
 		// Usuario para registro de acceso
 		public int UsuarioId { get; set; }
 	}
