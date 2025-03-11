@@ -32,7 +32,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 					return Unauthorized("Usuario no autenticado");
 				}
 
-				var rocas = await _rocaService.GetAllAsync(usuarioId);
+				var rocas = await _rocaService.GetAllAsync();
 				return Ok(rocas);
 			}
 			catch (KeyNotFoundException)
@@ -97,7 +97,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 
 				var roca = await _rocaService.CreateElementoConAccesoAsync(createRocaDto, createRocaDto.UsuarioId);
 				var rocaDto = await _rocaService.GetByIdAsync(roca.Id, createRocaDto.UsuarioId);
-
+				//Reemplazar por un OK
 				return CreatedAtAction(nameof(GetRoca), new { id = roca.Id }, rocaDto);
 			}
 			catch (System.Exception ex)
