@@ -32,7 +32,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 					return Unauthorized("Usuario no autenticado");
 				}
 
-				var fosiles = await _fosilService.GetAllAsync(usuarioId);
+				var fosiles = await _fosilService.GetAllAsync();
 				return Ok(fosiles);
 			}
 			catch (KeyNotFoundException)
@@ -96,9 +96,9 @@ namespace Servidor_Sistema_Geologia.Controllers
 				}
 
 				var fosil = await _fosilService.CreateElementoConAccesoAsync(createFosilDto, createFosilDto.UsuarioId);
-				//var fosilDto = await _fosilService.GetByIdAsync(fosil.Id, createFosilDto.UsuarioId);
-
-				return CreatedAtAction(nameof(GetFosil), new { id = fosil.Id }/*, fosilDto*/);
+				var fosilDto = await _fosilService.GetByIdAsync(fosil.Id, createFosilDto.UsuarioId);
+				//Reemplazar por un OK
+				return CreatedAtAction(nameof(GetFosil), new { id = fosil.Id }, fosilDto);
 			}
 			catch (System.Exception ex)
 			{
