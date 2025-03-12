@@ -8,6 +8,7 @@ using Servidor_Sistema_Geologia.Infrastructure;
 using Servidor_Sistema_Geologia.Models;
 using Microsoft.OpenApi.Models;
 using Servidor_Sistema_Geologia.Infrastructure.Profiles;
+using Servidor_Sistema_Geologia.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +60,9 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 // Registrar servicios para los diferentes tipos de elementos geológicos
 builder.Services.AddScoped<IElementoService<Fosil, FosilDto, CreateFosilDto>, FosilService>();
 builder.Services.AddScoped<IElementoService<Roca, RocaDto, CreateRocaDto>, RocaService>();
+// Register the FotoService
+builder.Services.AddScoped<IFotoService<FotoElemento, FotoElementoDto, CreateFotoElementoDto>, FotoElementoService>();
+
 
 // Configurar CORS (una sola política)
 builder.Services.AddCors(options =>
