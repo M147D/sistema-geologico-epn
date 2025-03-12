@@ -8,7 +8,7 @@ namespace Servidor_Sistema_Geologia.Application
 		where TReadDto : ElementoGeologicoDto
 	{
 		Task<TReadDto> GetByIdAsync(int id, int usuarioId);
-		Task<IEnumerable<TReadDto>> GetAllAsync(int usuarioId);
+		Task<IEnumerable<TReadDto>> GetAllAsync();
 		Task<TElemento> CreateAsync(TCreateDto elementoDto);
 		Task<TElemento> CreateElementoConAccesoAsync(TCreateDto dto, int usuarioId);
 		Task<TElemento> UpdateAsync(int id, TCreateDto dto, int usuarioId);
