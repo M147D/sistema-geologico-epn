@@ -72,7 +72,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 			CreateMap<GaleriaElementoGeologico, GaleriaElementoGeologicoDto>()
 				.ForMember(dest => dest.Fotos, opt => opt.MapFrom(src => src.Fotos));
 
-			CreateMap<FotoElemento, FotoElementoDto>().ReverseMap();
+			//CreateMap<FotoElemento, FotoElementoDto>().ReverseMap();
 
 			CreateMap<Ubicacion, UbicacionDto>()
 				.ForMember(dest => dest.Pais, opt => opt.MapFrom(src => src.Pais))
