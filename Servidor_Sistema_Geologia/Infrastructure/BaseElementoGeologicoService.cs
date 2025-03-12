@@ -14,7 +14,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			_db = db;
 		}
 
-		protected async Task GuardarFotosAsync(int elementoId, IEnumerable<FotoElementoDto> fotosDto)
+		/*protected async Task GuardarFotosAsync(int elementoId, IEnumerable<FotoElementoDto> fotosDto)
 		{
 			if (fotosDto == null || !fotosDto.Any()) return;
 
@@ -37,6 +37,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			// Se guardan las fotos en el contexto
 			_db.FotosElementos.AddRange(fotosParaAgregar);
 			await _db.SaveChangesAsync();
-		}
+		}*/
 	}
 }

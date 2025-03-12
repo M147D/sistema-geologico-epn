@@ -1,5 +1,4 @@
-﻿// 2. Ahora actualizamos el servicio base ElementoGeologicoService
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Servidor_Sistema_Geologia.Constants;
 using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.Models;
@@ -38,7 +37,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			return ConvertToDto(elemento);
 		}
 
-		public async Task<IEnumerable<TReadDto>> GetAllAsync(int usuarioId)
+		public async Task<IEnumerable<TReadDto>> GetAllAsync()
 		{
 			var elementos = await _db.Set<TElemento>()
 				.Include(e => e.Galeria)
@@ -107,7 +106,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 					await _db.SaveChangesAsync();
 				}
 
-				// Se comprueba la existencia de las fotos en el dto
+				/*// Se comprueba la existencia de las fotos en el dto
 				try
 				{
 					dynamic dynamicDto = dto;
@@ -119,7 +118,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 				catch (Exception ex)
 				{
 					throw; // Relanza la excepción para que sea manejada por el bloque try/catch exterior
-				}
+				}*/
 
 				// Commit the transaction if all operations succeed
 				await transaction.CommitAsync();
