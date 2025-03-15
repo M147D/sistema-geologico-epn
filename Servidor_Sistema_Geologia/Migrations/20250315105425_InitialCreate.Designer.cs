@@ -12,7 +12,7 @@ using Servidor_Sistema_Geologia.DAL;
 namespace Servidor_Sistema_Geologia.Migrations
 {
     [DbContext(typeof(GestorSistemaGeologia))]
-    [Migration("20250302224434_InitialCreate")]
+    [Migration("20250315105425_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -63,19 +63,22 @@ namespace Servidor_Sistema_Geologia.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Codigo")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("DocumentosRelacionados")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Donante")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("Edad")
-                        .HasColumnType("int");
+                    b.Property<decimal?>("Edad")
+                        .HasColumnType("decimal(20,0)");
 
-                    b.Property<int?>("Ejemplares")
-                        .HasColumnType("int");
+                    b.Property<long?>("Ejemplares")
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("EstadoElementoId")
                         .HasColumnType("int");
@@ -90,10 +93,12 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("LaminaURL")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Nombre")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("TipoElemento")
                         .IsRequired()
@@ -146,13 +151,16 @@ namespace Servidor_Sistema_Geologia.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("CreadoPor")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("DescripcionEspecifica")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Etiquetas")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("FechaSubida")
                         .HasColumnType("datetime2");
@@ -164,7 +172,8 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasColumnType("varbinary(max)");
 
                     b.Property<string>("TipoFoto")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
@@ -301,10 +310,12 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.HasBaseType("Servidor_Sistema_Geologia.Models.ElementoGeologico");
 
                     b.Property<string>("Especie")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Periodo")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasDiscriminator().HasValue("Fosil");
                 });
@@ -314,10 +325,12 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.HasBaseType("Servidor_Sistema_Geologia.Models.ElementoGeologico");
 
                     b.Property<string>("Litologia")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("TipoRoca")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasDiscriminator().HasValue("Roca");
                 });

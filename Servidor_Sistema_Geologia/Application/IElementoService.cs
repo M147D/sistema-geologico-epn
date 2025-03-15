@@ -13,5 +13,6 @@ namespace Servidor_Sistema_Geologia.Application
 		Task<TElemento> CreateElementoConAccesoAsync(TCreateDto dto, int usuarioId);
 		Task<TElemento> UpdateAsync(int id, TCreateDto dto, int usuarioId);
 		Task DeleteAsync(int id, int usuarioId);
+		Task<IEnumerable<TReadDto>> FilterAsync(FiltroElementoDto filtro);
 	}
 }

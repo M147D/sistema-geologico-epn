@@ -73,6 +73,64 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 		}
 
+		// GET: api/Rocas/filtro
+		[HttpGet("filtro")]
+		[Authorize]
+		public async Task<ActionResult<IEnumerable<RocaDto>>> FiltrarRocas(
+			[FromQuery] int? paisId,
+			[FromQuery] int? provinciaId,
+			[FromQuery] string? localidad,
+			[FromQuery] string? nombre,
+			[FromQuery] string? tipo)
+		{
+			try
+			{
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
+				var filtro = new FiltroElementoDto
+				{
+					PaisId = paisId,
+					ProvinciaId = provinciaId,
+					Localidad = localidad,
+					Nombre = nombre,
+					Tipo = tipo
+				};
+
+				var rocas = await _rocaService.FilterAsync(filtro);
+				return Ok(rocas);
+			}
+			catch (System.Exception ex)
+			{
+				return BadRequest($"Error al filtrar las rocas: {ex.Message}");
+			}
+		}
+
+		// También podemos mantener el endpoint POST para filtrar con un cuerpo JSON
+		[HttpPost("filtrar")]
+		[Authorize]
+		public async Task<ActionResult<IEnumerable<RocaDto>>> FiltrarRocasPost([FromBody] FiltroElementoDto filtro)
+		{
+			try
+			{
+				// Obtener ID de usuario de la cookie
+				if (!TryGetUsuarioId(out int usuarioId))
+				{
+					return Unauthorized("Usuario no autenticado");
+				}
+
+				var rocas = await _rocaService.FilterAsync(filtro);
+				return Ok(rocas);
+			}
+			catch (System.Exception ex)
+			{
+				return BadRequest($"Error al filtrar las rocas: {ex.Message}");
+			}
+		}
+
 		// POST: api/Rocas
 		[HttpPost]
 		[Authorize(Roles = "Admin")]
