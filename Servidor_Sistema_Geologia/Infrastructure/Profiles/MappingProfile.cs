@@ -18,7 +18,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 						Fotos = src.Galeria.Fotos.Select(f => new FotoElementoDto
 						{
 							Id = f.Id,
-							Imagen = f.Imagen,
+							Imagen = null,
 							TipoFoto = f.TipoFoto,
 							FechaSubida = f.FechaSubida,
 							CreadoPor = f.CreadoPor,

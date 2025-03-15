@@ -75,11 +75,11 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     GaleriaElementosGeologicoId = table.Column<int>(type: "int", nullable: true),
                     Imagen = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                    TipoFoto = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TipoFoto = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     FechaSubida = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreadoPor = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    DescripcionEspecifica = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Etiquetas = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    CreadoPor = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    DescripcionEspecifica = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Etiquetas = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -151,20 +151,20 @@ namespace Servidor_Sistema_Geologia.Migrations
                     EstadoElementoId = table.Column<int>(type: "int", nullable: true),
                     UbicacionId = table.Column<int>(type: "int", nullable: true),
                     GaleriaElementosGeologicoId = table.Column<int>(type: "int", nullable: true),
-                    Nombre = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Edad = table.Column<int>(type: "int", nullable: true),
-                    Donante = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Nombre = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Edad = table.Column<decimal>(type: "decimal(20,0)", nullable: true),
+                    Donante = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     FechaIngreso = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Codigo = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Ejemplares = table.Column<int>(type: "int", nullable: true),
-                    DocumentosRelacionados = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    LaminaURL = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Codigo = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Ejemplares = table.Column<long>(type: "bigint", nullable: true),
+                    DocumentosRelacionados = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    LaminaURL = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     LaminaExiste = table.Column<bool>(type: "bit", nullable: true),
                     TipoElemento = table.Column<string>(type: "nvarchar(21)", maxLength: 21, nullable: false),
-                    Especie = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Periodo = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TipoRoca = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Litologia = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Especie = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Periodo = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    TipoRoca = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Litologia = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {

@@ -73,6 +73,53 @@ namespace Servidor_Sistema_Geologia.Controllers
 			}
 		}
 
+		// GET: api/Fosiles/filtro
+		[HttpGet("filtro")]
+		[Authorize]
+		public async Task<ActionResult<IEnumerable<FosilDto>>> FiltrarFosiles(
+			[FromQuery] int? paisId,
+			[FromQuery] int? provinciaId,
+			[FromQuery] string? localidad,
+			[FromQuery] string? nombre,
+			[FromQuery] string? tipo)
+		{
+			try
+			{
+				
+				var filtro = new FiltroElementoDto
+				{
+					PaisId = paisId,
+					ProvinciaId = provinciaId,
+					Localidad = localidad,
+					Nombre = nombre,
+					Tipo = tipo
+				};
+
+				var fosiles = await _fosilService.FilterAsync(filtro);
+				return Ok(fosiles);
+			}
+			catch (System.Exception ex)
+			{
+				return BadRequest($"Error al filtrar los fósiles: {ex.Message}");
+			}
+		}
+
+		// También podemos mantener el endpoint POST para filtrar con un cuerpo JSON
+		[HttpPost("filtrar")]
+		[Authorize]
+		public async Task<ActionResult<IEnumerable<FosilDto>>> FiltrarFosilesPost([FromBody] FiltroElementoDto filtro)
+		{
+			try
+			{
+				var fosiles = await _fosilService.FilterAsync(filtro);
+				return Ok(fosiles);
+			}
+			catch (System.Exception ex)
+			{
+				return BadRequest($"Error al filtrar los fósiles: {ex.Message}");
+			}
+		}
+
 		// POST: api/Fosiles
 		[HttpPost]
 		[Authorize(Roles = "Admin")]

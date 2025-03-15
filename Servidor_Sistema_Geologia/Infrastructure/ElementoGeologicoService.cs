@@ -205,6 +205,50 @@ namespace Servidor_Sistema_Geologia.Infrastructure
 			await _db.SaveChangesAsync();
 		}
 
+		// Método para filtrar elementos geológicos por ubicación
+        public async Task<IEnumerable<TReadDto>> FilterAsync(FiltroElementoDto filtro)
+        {
+            // Construcción de la consulta base con includes necesarios
+            var query = _db.Set<TElemento>()
+                .Include(e => e.Galeria)
+                    .ThenInclude(g => g.Fotos)
+                .Include(e => e.Ubicacion)
+                    .ThenInclude(u => u.Pais)
+                .Include(e => e.Ubicacion)
+                    .ThenInclude(u => u.Provincia)
+                .Include(e => e.EstadoElemento)
+                .Where(e => e.EstadoElemento.DescripcionEstado != EstadosElemento.Eliminado);
+
+            // Aplicar filtros dinámicamente solo si se proporcionan
+            if (filtro.PaisId.HasValue)
+            {
+                query = query.Where(e => e.Ubicacion != null && e.Ubicacion.PaisId == filtro.PaisId);
+            }
+
+            if (filtro.ProvinciaId.HasValue)
+            {
+                query = query.Where(e => e.Ubicacion != null && e.Ubicacion.ProvinciaId == filtro.ProvinciaId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtro.Localidad))
+            {
+                query = query.Where(e => e.Ubicacion != null && 
+                                        !string.IsNullOrEmpty(e.Ubicacion.Localidad) && 
+                                        e.Ubicacion.Localidad.Contains(filtro.Localidad));
+            }
+            
+            if (!string.IsNullOrWhiteSpace(filtro.Nombre))
+            {
+                query = query.Where(e => !string.IsNullOrEmpty(e.Nombre) && e.Nombre.Contains(filtro.Nombre));
+            }
+
+            // Ejecutar la consulta y obtener todos los elementos
+            var elementos = await query.ToListAsync();
+
+            // Convertir a DTOs
+            return elementos.Select(e => ConvertToDto(e));
+        }
+
 		// Métodos de conversión:
 		protected virtual TReadDto ConvertToDto(TElemento elemento) => throw new NotImplementedException();
 		protected virtual async Task<TElemento> ConvertToEntity(TCreateDto dto) => throw new NotImplementedException();
