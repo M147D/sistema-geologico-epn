@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Servidor_Sistema_Geologia.Constants;
 using Servidor_Sistema_Geologia.Models;
 
 namespace Servidor_Sistema_Geologia.DAL
@@ -14,6 +15,7 @@ namespace Servidor_Sistema_Geologia.DAL
 		public DbSet<EstadoElemento> EstadosElementos { get; set; }
 		public DbSet<Roca> Rocas { get; set; }
 		public DbSet<Fosil> Fosiles { get; set; }
+		public DbSet<Mineral> Minerales { get; set; }
 		public DbSet<Pais> Paises { get; set; }
 		public DbSet<Provincia> Provincias { get; set; }
 		public DbSet<Ubicacion> Ubicaciones { get; set; }
@@ -37,7 +39,8 @@ namespace Servidor_Sistema_Geologia.DAL
 			modelBuilder.Entity<ElementoGeologico>()
 				.HasDiscriminator<string>("TipoElemento")
 				.HasValue<Roca>("Roca")
-				.HasValue<Fosil>("Fosil");
+				.HasValue<Fosil>("Fosil")
+				.HasValue<Mineral>("Mineral");
 
 			modelBuilder.Entity<ElementoGeologico>()
 				.HasOne(e => e.Ubicacion)
@@ -102,6 +105,10 @@ namespace Servidor_Sistema_Geologia.DAL
 
 			modelBuilder.Entity<Acceso>()
 				.Property(a => a.Accion)
+				.HasConversion<string>();
+
+			modelBuilder.Entity<Fosil>()
+				.Property(f => f.TipoFosil)
 				.HasConversion<string>();
 		}
 	}

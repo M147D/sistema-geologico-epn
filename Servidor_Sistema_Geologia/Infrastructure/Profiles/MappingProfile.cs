@@ -51,6 +51,29 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
 				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
 
+			// Mapeo para Mineral
+			CreateMap<Mineral, MineralDto>()
+				.ForMember(dest => dest.Galeria, opt => opt.MapFrom(src =>
+					src.Galeria != null ? new GaleriaElementoGeologicoDto
+					{
+						Id = src.Galeria.Id,
+						DetalleGrupo = src.Galeria.DetalleGrupo,
+						Fotos = src.Galeria.Fotos.Select(f => new FotoElementoDto
+						{
+							Id = f.Id,
+							Imagen = null,
+							TipoFoto = f.TipoFoto,
+							FechaSubida = f.FechaSubida,
+							CreadoPor = f.CreadoPor,
+							DescripcionEspecifica = f.DescripcionEspecifica,
+							Etiquetas = f.Etiquetas
+						}).ToList()
+					} : null
+				))
+				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
+				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
+
+
 			// Mapeos para DTOs de creación (CreateDtoToEntity)
 			CreateMap<CreateFosilDto, Fosil>()
 				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore())
@@ -61,6 +84,15 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 				.ForMember(dest => dest.GaleriaElementosGeologicoId, opt => opt.Ignore());
 
 			CreateMap<CreateRocaDto, Roca>()
+				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore())
+				.ForMember(dest => dest.UbicacionId, opt => opt.Ignore())
+				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore())
+				.ForMember(dest => dest.EstadoElementoId, opt => opt.Ignore())
+				.ForMember(dest => dest.Galeria, opt => opt.Ignore())
+				.ForMember(dest => dest.GaleriaElementosGeologicoId, opt => opt.Ignore());
+
+			// Mapeo para CreateMineralDto
+			CreateMap<CreateMineralDto, Mineral>()
 				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore())
 				.ForMember(dest => dest.UbicacionId, opt => opt.Ignore())
 				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore())

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Servidor_Sistema_Geologia.Constants;
+using System.ComponentModel.DataAnnotations;
 
 namespace Servidor_Sistema_Geologia.Models
 {
@@ -9,5 +10,7 @@ namespace Servidor_Sistema_Geologia.Models
 
 		[MaxLength(100)]
 		public string? Periodo { get; set; }
+
+		public SubtipoFosil? TipoFosil { get; set; }
 	}
 }

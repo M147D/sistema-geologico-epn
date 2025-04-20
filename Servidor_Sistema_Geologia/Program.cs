@@ -73,7 +73,8 @@ builder.Services.AddCors(options =>
 			policy.WithOrigins("http://localhost:5173") // URL del frontend (Vite)
 				  .AllowAnyHeader()
 				  .AllowAnyMethod()
-				  .AllowCredentials(); // Permite cookies
+				  .AllowCredentials() // Permite cookies
+				  .WithExposedHeaders("Set-Cookie");
 		});
 });
 
@@ -182,12 +183,11 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-	// En producción, usar HTTPS
-	app.UseHttpsRedirection();
-
 	// Manejar errores de forma más segura en producción
 	app.UseExceptionHandler("/error");
 	app.UseHsts();
+	// En producción, usar HTTPS
+	app.UseHttpsRedirection();
 }
 
 // Aplicar CORS
@@ -195,8 +195,9 @@ app.UseCors("AllowFrontend");
 
 // Middleware de autenticación y autorización
 app.UseAuthentication();
+app.UseAuthorization();
 
-// AÑADIDO: Middleware de diagnóstico para depurar problemas de autenticación
+// Middleware de diagnóstico para depurar problemas de autenticación
 app.Use(async (context, next) =>
 {
 	// Registrar estado de autenticación
@@ -216,8 +217,6 @@ app.Use(async (context, next) =>
 		Console.WriteLine($"Estableciendo cookie: {cookie}");
 	}
 });
-
-app.UseAuthorization();
 
 app.MapControllers();
 
