@@ -40,6 +40,9 @@ namespace Servidor_Sistema_Geologia.Controllers
 					return StatusCode(500, new { message = "Configuración de autenticación incompleta" });
 				}
 
+				// Log para depuración
+				_logger.LogInformation("Recibido token de Google para validación");
+
 				// Validar token de Google
 				var settings = new GoogleJsonWebSignature.ValidationSettings
 				{
@@ -47,6 +50,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 				};
 
 				var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token, settings);
+				_logger.LogInformation("Token validado correctamente para: {Email}", payload.Email);
 
 				// Buscar o crear usuario
 				var user = await _context.Usuarios
@@ -117,7 +121,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error en autenticación: {Message}", ex.Message);
-				return StatusCode(500, new { message = "Error de autenticación" });
+				return StatusCode(500, new { message = "Error de autenticación", details = ex.Message });
 			}
 		}
 
@@ -127,6 +131,16 @@ namespace Servidor_Sistema_Geologia.Controllers
 		{
 			try
 			{
+				// Obtener claims del usuario autenticado
+				var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+
+				_logger.LogInformation("Verificando usuario actual, autenticado: {IsAuthenticated}", isAuthenticated);
+
+				if (!isAuthenticated)
+				{
+					return Ok(new { isAuthenticated = false, message = "No autenticado" });
+				}
+
 				// Obtener claims del usuario autenticado
 				var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 				var email = User.FindFirstValue(ClaimTypes.Email);
@@ -152,7 +166,7 @@ namespace Servidor_Sistema_Geologia.Controllers
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Error al obtener usuario actual");
-				return StatusCode(500, new { message = "Error interno" });
+				return StatusCode(500, new { message = "Error interno", details = ex.Message}); 
 			}
 		}
 

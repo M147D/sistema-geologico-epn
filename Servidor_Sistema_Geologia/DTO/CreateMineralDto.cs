@@ -1,11 +1,12 @@
 ﻿namespace Servidor_Sistema_Geologia.DTO
 {
-	public class CreateFosilDto
+	public class CreateMineralDto
 	{
-		// Propiedades propias del fósil
-		public string? Especie { get; set; }
-		public string? Periodo { get; set; }
-		public string? TipoFosil { get; set; }
+		// Propiedades específicas del mineral
+		public string? TipoMineral { get; set; }
+		public string? Litologia { get; set; }
+
+		// Propiedades heredadas de ElementoGeologico
 		public string? Nombre { get; set; }
 		public ulong? Edad { get; set; }
 		public string? Donante { get; set; }
