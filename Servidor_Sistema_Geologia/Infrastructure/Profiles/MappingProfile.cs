@@ -27,8 +27,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 						}).ToList()
 					} : null
 				))
-				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
-				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
+				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion));
 
 			CreateMap<Roca, RocaDto>()
 				.ForMember(dest => dest.Galeria, opt => opt.MapFrom(src =>
@@ -48,8 +47,7 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 						}).ToList()
 					} : null
 				))
-				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
-				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
+				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion));
 
 			// Mapeo para Mineral
 			CreateMap<Mineral, MineralDto>()
@@ -70,24 +68,19 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 						}).ToList()
 					} : null
 				))
-				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion))
-				.ForMember(dest => dest.EstadoElemento, opt => opt.MapFrom(src => src.EstadoElemento));
+				.ForMember(dest => dest.Ubicacion, opt => opt.MapFrom(src => src.Ubicacion));
 
 
 			// Mapeos para DTOs de creación (CreateDtoToEntity)
 			CreateMap<CreateFosilDto, Fosil>()
 				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore())
 				.ForMember(dest => dest.UbicacionId, opt => opt.Ignore())
-				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore())
-				.ForMember(dest => dest.EstadoElementoId, opt => opt.Ignore())
 				.ForMember(dest => dest.Galeria, opt => opt.Ignore())
 				.ForMember(dest => dest.GaleriaElementosGeologicoId, opt => opt.Ignore());
 
 			CreateMap<CreateRocaDto, Roca>()
 				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore())
 				.ForMember(dest => dest.UbicacionId, opt => opt.Ignore())
-				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore())
-				.ForMember(dest => dest.EstadoElementoId, opt => opt.Ignore())
 				.ForMember(dest => dest.Galeria, opt => opt.Ignore())
 				.ForMember(dest => dest.GaleriaElementosGeologicoId, opt => opt.Ignore());
 
@@ -95,8 +88,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 			CreateMap<CreateMineralDto, Mineral>()
 				.ForMember(dest => dest.Ubicacion, opt => opt.Ignore())
 				.ForMember(dest => dest.UbicacionId, opt => opt.Ignore())
-				.ForMember(dest => dest.EstadoElemento, opt => opt.Ignore())
-				.ForMember(dest => dest.EstadoElementoId, opt => opt.Ignore())
 				.ForMember(dest => dest.Galeria, opt => opt.Ignore())
 				.ForMember(dest => dest.GaleriaElementosGeologicoId, opt => opt.Ignore());
 
@@ -112,7 +103,6 @@ namespace Servidor_Sistema_Geologia.Infrastructure.Profiles
 
 			CreateMap<Pais, PaisDto>().ReverseMap();
 			CreateMap<Provincia, ProvinciaDto>().ReverseMap();
-			CreateMap<EstadoElemento, EstadoElementoDto>().ReverseMap();
 		}
 	}
 }

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using Servidor_Sistema_Geologia.Application;
 using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Infrastructure;
@@ -16,14 +15,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Registra el DbContext con la cadena de conexión
+// Registra el DbContext con la cadena de conexion
 builder.Services.AddDbContext<GestorSistemaGeologia>(options =>
 	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configurar Swagger con OAuth2
 builder.Services.AddSwaggerGen(c =>
 {
-	c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sistema Geología API", Version = "v1" });
+	c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sistema Geologï¿½a API", Version = "v1" });
 	c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
 	{
 		Type = SecuritySchemeType.OAuth2,
@@ -35,7 +34,7 @@ builder.Services.AddSwaggerGen(c =>
 				TokenUrl = new Uri("https://oauth2.googleapis.com/token"),
 				Scopes = new Dictionary<string, string>
 				{
-					{ "openid", "Acceso a la identificación del usuario" },
+					{ "openid", "Acceso a la identificaciï¿½n del usuario" },
 					{ "profile", "Acceso al perfil del usuario" },
 					{ "email", "Acceso al email del usuario" }
 				}
@@ -57,14 +56,14 @@ builder.Services.AddSwaggerGen(c =>
 // Registro de servicios
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// Registrar servicios para los diferentes tipos de elementos geológicos
+// Registrar servicios para los diferentes tipos de elementos geolï¿½gicos
 builder.Services.AddScoped<IElementoService<Fosil, FosilDto, CreateFosilDto>, FosilService>();
 builder.Services.AddScoped<IElementoService<Roca, RocaDto, CreateRocaDto>, RocaService>();
 // Register the FotoService
 builder.Services.AddScoped<IFotoService<FotoElemento, FotoElementoDto, CreateFotoElementoDto>, FotoElementoService>();
 
 
-// Configurar CORS (una sola política)
+// Configurar CORS (una sola polï¿½tica)
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("AllowFrontend",
@@ -78,19 +77,19 @@ builder.Services.AddCors(options =>
 		});
 });
 
-// Verificar configuración de Google
+// Verificar configuraciï¿½n de Google
 var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
 var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
 var hasGoogleConfig = !string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret);
 
 if (!hasGoogleConfig)
 {
-	Console.WriteLine("ADVERTENCIA: No se encontró la configuración de autenticación de Google. " +
-					 "Asegúrate de configurar Authentication:Google:ClientId y Authentication:Google:ClientSecret " +
+	Console.WriteLine("ADVERTENCIA: No se encontrï¿½ la configuraciï¿½n de autenticaciï¿½n de Google. " +
+					 "Asegï¿½rate de configurar Authentication:Google:ClientId y Authentication:Google:ClientSecret " +
 					 "en appsettings.json o en variables de entorno.");
 }
 
-// Configurar autenticación - CORREGIDO: solo una configuración de autenticación
+// Configurar autenticaciï¿½n - CORREGIDO: solo una configuraciï¿½n de autenticaciï¿½n
 var authBuilder = builder.Services.AddAuthentication(options =>
 {
 	options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -98,20 +97,20 @@ var authBuilder = builder.Services.AddAuthentication(options =>
 })
 .AddCookie(options =>
 {
-	// Configuración de la cookie de autenticación
+	// Configuraciï¿½n de la cookie de autenticaciï¿½n
 	options.Cookie.Name = "session";
 	options.Cookie.HttpOnly = true;
 	options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
 		? CookieSecurePolicy.SameAsRequest
 		: CookieSecurePolicy.Always;
 	options.Cookie.SameSite = SameSiteMode.Lax;
-	options.Cookie.Path = "/";  // AÑADIDO: Ruta explícita para la cookie
+	options.Cookie.Path = "/";  // Aï¿½ADIDO: Ruta explï¿½cita para la cookie
 
-	// Configurar expiración y renovación
+	// Configurar expiraciï¿½n y renovaciï¿½n
 	options.ExpireTimeSpan = TimeSpan.FromDays(7);
 	options.SlidingExpiration = true;
 
-	// Personalizar redirección de login
+	// Personalizar redirecciï¿½n de login
 	options.Events.OnRedirectToLogin = context =>
 	{
 		context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -136,22 +135,15 @@ var authBuilder = builder.Services.AddAuthentication(options =>
 		});
 		return context.Response.WriteAsync(result);
 	};
-
-	// AÑADIDO: Evento de depuración para inicios de sesión
-	options.Events.OnSigningIn = context =>
-	{
-		Console.WriteLine("Iniciando sesión para usuario: " + context.Principal?.Identity?.Name);
-		return Task.CompletedTask;
-	};
 });
 
-// Usar el builder de autenticación existente
+// Usar el builder de autenticaciï¿½n existente
 if (hasGoogleConfig)
 {
 	authBuilder.AddGoogle(options =>
 	{
-		options.ClientId = googleClientId;
-		options.ClientSecret = googleClientSecret;
+		options.ClientId = googleClientId!;
+		options.ClientSecret = googleClientSecret!;
 		options.CallbackPath = "/api/auth/google-response";
 		options.Scope.Add("openid");
 		options.Scope.Add("profile");
@@ -160,7 +152,7 @@ if (hasGoogleConfig)
 	});
 }
 
-// Usar políticas de autorización más específicas
+// Usar polï¿½ticas de autorizaciï¿½n mï¿½s especï¿½ficas
 builder.Services.AddAuthorization(options =>
 {
 	options.AddPolicy("RequireAdminRole", policy =>
@@ -183,24 +175,24 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-	// Manejar errores de forma más segura en producción
+	// Manejar errores de forma mï¿½s segura en producciï¿½n
 	app.UseExceptionHandler("/error");
 	app.UseHsts();
-	// En producción, usar HTTPS
+	// En producciï¿½n, usar HTTPS
 	app.UseHttpsRedirection();
 }
 
 // Aplicar CORS
 app.UseCors("AllowFrontend");
 
-// Middleware de autenticación y autorización
+// Middleware de autenticaciï¿½n y autorizaciï¿½n
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Middleware de diagnóstico para depurar problemas de autenticación
+// Middleware de diagnï¿½stico para depurar problemas de autenticaciï¿½n
 app.Use(async (context, next) =>
 {
-	// Registrar estado de autenticación
+	// Registrar estado de autenticaciï¿½n
 	var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
 	Console.WriteLine($"Solicitud a {context.Request.Path} - Autenticado: {isAuthenticated}");
 	
