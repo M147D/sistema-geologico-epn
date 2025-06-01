@@ -1,10 +1,10 @@
-﻿namespace Servidor_Sistema_Geologia.Constants
+﻿namespace Servidor_Sistema_Geologia;
+
+public enum AccionesUsuario
 {
-	public enum AccionesUsuario
-	{
-		Creacion,
-		Eliminacion,
-		Edicion,
-		Visualizacion
-	}
+	Ninguna,
+	Creacion,
+	Eliminacion,
+	Edicion,
+	Visualizacion
 }

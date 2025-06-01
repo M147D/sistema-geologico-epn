@@ -1,6 +1,4 @@
-﻿using Servidor_Sistema_Geologia.Constants;
-
-namespace Servidor_Sistema_Geologia.DTO
+﻿namespace Servidor_Sistema_Geologia.DTO
 {
 	public class UsuarioDto
 	{
