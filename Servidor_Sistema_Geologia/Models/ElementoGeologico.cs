@@ -1,15 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using Servidor_Sistema_Geologia.Constants;
+using Servidor_Sistema_Geologia.Galeria;
 
 namespace Servidor_Sistema_Geologia;
 
-public abstract class ElementoGeologico
+public class ElementoGeologico
 {
 	[Key]
 	public int Id { get; set; }
-	[Required(ErrorMessage = "El estado es obligatorio")]
-	[EnumDataType(typeof(EstadosElemento), ErrorMessage = "El estado debe ser un valor valido de EstadosElemento")]
-	public EstadosElemento Estado { get; set; } = EstadosElemento.Creado;
 	[Required(ErrorMessage = "El nombre es obligatorio")]
 	[StringLength(200, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 200 caracteres")]
 	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "El nombre solo puede contener letras y espacios")]
@@ -41,7 +38,6 @@ public abstract class ElementoGeologico
 	[Required(ErrorMessage = "La existencia de lamina es obligatoria")]
 	[RegularExpression(@"^(true|false)$", ErrorMessage = "La existencia de lamina debe ser true o false")]
 	[Display(Name = "¿Existe lamina?")]
-	[DisplayFormat(ConvertEmptyStringToNull = false)]
 	public bool LaminaExiste { get; set; } = false;
 	public int? UbicacionId { get; set; }
 	public int? GaleriaElementosGeologicoId { get; set; }

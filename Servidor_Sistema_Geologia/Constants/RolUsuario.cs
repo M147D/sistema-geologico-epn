@@ -1,9 +1,8 @@
-﻿namespace Servidor_Sistema_Geologia.Constants
+﻿namespace Servidor_Sistema_Geologia;
+
+public enum RolUsuario
 {
-	public enum RolUsuario
-	{
-		Free,
-		Premium,
-		Admin
-	}
+	Free,
+	Premium,
+	Admin
 }

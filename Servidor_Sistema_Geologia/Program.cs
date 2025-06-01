@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
-using Servidor_Sistema_Geologia.DAL;
-using Servidor_Sistema_Geologia.DTO;
-using Servidor_Sistema_Geologia.Infrastructure;
-using Servidor_Sistema_Geologia.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Servidor_Sistema_Geologia.Infrastructure.Profiles;
-using Servidor_Sistema_Geologia.Services;
+using Servidor_Sistema_Geologia.Repositories.Interfaces;
+using Servidor_Sistema_Geologia.Repositories.Implementation;
+using Servidor_Sistema_Geologia.Services.Interfaces;
+using Servidor_Sistema_Geologia.Services.Implementation;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,133 +16,178 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 // Registra el DbContext con la cadena de conexion
-builder.Services.AddDbContext<GestorSistemaGeologia>(options =>
+builder.Services.AddDbContext<Servidor_Sistema_Geologia.GestorSistemaGeologia>(options =>
 	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configurar Swagger con OAuth2
+// Configurar Identity
+builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int>>(options =>
+{
+	// Configuración de Password
+	options.Password.RequireDigit = true;
+	options.Password.RequireLowercase = true;
+	options.Password.RequireUppercase = true;
+	options.Password.RequireNonAlphanumeric = false;
+	options.Password.RequiredLength = 6;
+	options.Password.RequiredUniqueChars = 1;
+
+	// Configuración de Lockout
+	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+	options.Lockout.MaxFailedAccessAttempts = 5;
+	options.Lockout.AllowedForNewUsers = true;
+
+	// Configuración de Usuario
+	options.User.AllowedUserNameCharacters =
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+	options.User.RequireUniqueEmail = true;
+
+	// Configuración de SignIn
+	options.SignIn.RequireConfirmedEmail = false;
+	options.SignIn.RequireConfirmedPhoneNumber = false;
+})
+.AddEntityFrameworkStores<Servidor_Sistema_Geologia.GestorSistemaGeologia>()
+.AddDefaultTokenProviders();
+
+// ========================================
+// CONFIGURACIÓN DE INYECCIÓN DE DEPENDENCIAS
+// ========================================
+
+// Registrar Repositorios
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Registrar Servicios
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+
+// ========================================
+// CONFIGURACIÓN DE JWT AUTHENTICATION
+// ========================================
+
+// Configurar JWT Authentication
+var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "SistemaGeologico2025-SuperSecretKey-DeDesarrollo-NoUsarEnProduccion-MinimumLengthRequired";
+var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "SistemaGeologico";
+var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "SistemaGeologico-API";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.SaveToken = true;
+    options.RequireHttpsMetadata = false; // Solo para desarrollo
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero // Sin tolerancia para expiración
+    };
+
+    // Configurar eventos para manejo de errores JWT
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"🔥 JWT Authentication failed: {context.Exception.Message}");
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Token inválido o expirado",
+                error = context.Exception?.Message
+            }));
+        },
+        OnTokenValidated = context =>
+        {
+            var userEmail = context.Principal?.FindFirst("email")?.Value ?? "Unknown";
+            Console.WriteLine($"✅ JWT Token validated for user: {userEmail}");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
+            context.HandleResponse();
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Se requiere autenticación",
+                loginRequired = true
+            }));
+        },
+        OnForbidden = context =>
+        {
+            Console.WriteLine($"🚫 JWT Forbidden access");
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/json";
+            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+            {
+                success = false,
+                message = "Acceso denegado",
+                insufficientPermissions = true
+            }));
+        }
+    };
+});
+
+// ========================================
+// CONFIGURACIÓN DE SWAGGER CON JWT
+// ========================================
+
 builder.Services.AddSwaggerGen(c =>
 {
-	c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sistema Geolog�a API", Version = "v1" });
-	c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+	c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sistema Geologia API", Version = "v1" });
+	
+	// Configurar JWT en Swagger
+	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 	{
-		Type = SecuritySchemeType.OAuth2,
-		Flows = new OpenApiOAuthFlows
-		{
-			AuthorizationCode = new OpenApiOAuthFlow
-			{
-				AuthorizationUrl = new Uri("https://accounts.google.com/o/oauth2/auth"),
-				TokenUrl = new Uri("https://oauth2.googleapis.com/token"),
-				Scopes = new Dictionary<string, string>
-				{
-					{ "openid", "Acceso a la identificaci�n del usuario" },
-					{ "profile", "Acceso al perfil del usuario" },
-					{ "email", "Acceso al email del usuario" }
-				}
-			}
-		}
+		Description = "JWT Authorization header usando el esquema Bearer. Ejemplo: 'Bearer {token}'",
+		Name = "Authorization",
+		In = ParameterLocation.Header,
+		Type = SecuritySchemeType.ApiKey,
+		Scheme = "Bearer"
 	});
+
 	c.AddSecurityRequirement(new OpenApiSecurityRequirement
 	{
 		{
 			new OpenApiSecurityScheme
 			{
-				Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "oauth2" }
+				Reference = new OpenApiReference 
+				{ 
+					Type = ReferenceType.SecurityScheme, 
+					Id = "Bearer" 
+				}
 			},
-			new List<string>()
+			new string[] {}
 		}
 	});
 });
 
-// Configurar CORS (una sola pol�tica)
+// Configurar CORS
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("AllowFrontend",
 		policy =>
 		{
-			policy.WithOrigins("http://localhost:5173") // URL del frontend (Vite)
+			policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // URLs del frontend
 				  .AllowAnyHeader()
 				  .AllowAnyMethod()
-				  .AllowCredentials() // Permite cookies
-				  .WithExposedHeaders("Set-Cookie");
+				  .AllowCredentials();
 		});
 });
 
-// Verificar configuraci�n de Google
-var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
-var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-var hasGoogleConfig = !string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret);
-
-if (!hasGoogleConfig)
-{
-	Console.WriteLine("ADVERTENCIA: No se encontr� la configuraci�n de autenticaci�n de Google. " +
-					 "Aseg�rate de configurar Authentication:Google:ClientId y Authentication:Google:ClientSecret " +
-					 "en appsettings.json o en variables de entorno.");
-}
-
-// Configurar autenticaci�n - CORREGIDO: solo una configuraci�n de autenticaci�n
-var authBuilder = builder.Services.AddAuthentication(options =>
-{
-	options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-	options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-})
-.AddCookie(options =>
-{
-	// Configuraci�n de la cookie de autenticaci�n
-	options.Cookie.Name = "session";
-	options.Cookie.HttpOnly = true;
-	options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-		? CookieSecurePolicy.SameAsRequest
-		: CookieSecurePolicy.Always;
-	options.Cookie.SameSite = SameSiteMode.Lax;
-	options.Cookie.Path = "/";  // A�ADIDO: Ruta expl�cita para la cookie
-
-	// Configurar expiraci�n y renovaci�n
-	options.ExpireTimeSpan = TimeSpan.FromDays(7);
-	options.SlidingExpiration = true;
-
-	// Personalizar redirecci�n de login
-	options.Events.OnRedirectToLogin = context =>
-	{
-		context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-		context.Response.ContentType = "application/json";
-		var result = System.Text.Json.JsonSerializer.Serialize(new
-		{
-			message = "No autenticado",
-			loginRequired = true
-		});
-		return context.Response.WriteAsync(result);
-	};
-
-	// Personalizar manejo de acceso denegado
-	options.Events.OnRedirectToAccessDenied = context =>
-	{
-		context.Response.StatusCode = StatusCodes.Status403Forbidden;
-		context.Response.ContentType = "application/json";
-		var result = System.Text.Json.JsonSerializer.Serialize(new
-		{
-			message = "Acceso denegado",
-			insufficientPermissions = true
-		});
-		return context.Response.WriteAsync(result);
-	};
-});
-
-// Usar el builder de autenticaci�n existente
-if (hasGoogleConfig)
-{
-	authBuilder.AddGoogle(options =>
-	{
-		options.ClientId = googleClientId!;
-		options.ClientSecret = googleClientSecret!;
-		options.CallbackPath = "/api/auth/google-response";
-		options.Scope.Add("openid");
-		options.Scope.Add("profile");
-		options.Scope.Add("email");
-		options.SaveTokens = true;
-	});
-}
-
-// Usar pol�ticas de autorizaci�n m�s espec�ficas
+// Configurar políticas de autorización
 builder.Services.AddAuthorization(options =>
 {
 	options.AddPolicy("RequireAdminRole", policy =>
@@ -154,52 +199,53 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-// Configuro el pipeline de solicitudes HTTP
+// Configurar el pipeline de solicitudes HTTP
 if (app.Environment.IsDevelopment())
 {
 	app.UseSwagger();
-	app.UseSwaggerUI();
+	app.UseSwaggerUI(c =>
+	{
+		c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sistema Geologia API v1");
+		c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+	});
 
-	// En desarrollo, permitir errores detallados
 	app.UseDeveloperExceptionPage();
 }
 else
 {
-	// Manejar errores de forma m�s segura en producci�n
 	app.UseExceptionHandler("/error");
 	app.UseHsts();
-	// En producci�n, usar HTTPS
 	app.UseHttpsRedirection();
 }
 
 // Aplicar CORS
 app.UseCors("AllowFrontend");
 
-// Middleware de autenticaci�n y autorizaci�n
+// 🔥 ORDEN IMPORTANTE: Authentication ANTES de Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Middleware de diagn�stico para depurar problemas de autenticaci�n
+// Middleware de diagnóstico JWT
 app.Use(async (context, next) =>
 {
-	// Registrar estado de autenticaci�n
 	var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
-	Console.WriteLine($"Solicitud a {context.Request.Path} - Autenticado: {isAuthenticated}");
+	var userEmail = context.User?.FindFirst("email")?.Value ?? "Anonymous";
+	var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
 	
-	// Continuar con la solicitud
+	Console.WriteLine($"🔍 Request: {context.Request.Method} {context.Request.Path}");
+	Console.WriteLine($"   Auth: {isAuthenticated} | User: {userEmail}");
+	Console.WriteLine($"   Token: {(authHeader != null ? "Present" : "Missing")}");
+	
 	await next();
-
-	// Registrar cookies en la respuesta
-	var cookieHeaders = context.Response.Headers
-		.Where(h => h.Key.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
-		.SelectMany(h => h.Value);
-
-	foreach (var cookie in cookieHeaders)
-	{
-		Console.WriteLine($"Estableciendo cookie: {cookie}");
-	}
 });
 
 app.MapControllers();
+
+Console.WriteLine("🚀 Sistema Geológico API iniciado con JWT Authentication");
+Console.WriteLine("📋 Endpoints disponibles:");
+Console.WriteLine("   🔐 POST /api/auth/register - Registrar usuario");
+Console.WriteLine("   🔐 POST /api/auth/login - Login (devuelve JWT)");
+Console.WriteLine("   👥 GET /api/users - Listar usuarios (requiere token)");
+Console.WriteLine("   📖 /swagger - Documentación API");
 
 app.Run();

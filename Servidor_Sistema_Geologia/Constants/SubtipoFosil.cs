@@ -1,11 +1,11 @@
-﻿namespace Servidor_Sistema_Geologia.Constants
+﻿namespace Servidor_Sistema_Geologia;
+
+public enum SubtipoFosil
 {
-	public enum SubtipoFosil
-	{
-		Vertebrado,
-		Invertebrado,
-		Paleobotánica,
-		Icnofósil,
-		Microfósil,
-	}
+	Desconocido,
+	Vertebrado,
+	Invertebrado,
+	Paleobotánica,
+	Icnofósil,
+	Microfósil,
 }

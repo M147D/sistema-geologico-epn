@@ -1,13 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Servidor_Sistema_Geologia.Models
-{
-	public class Roca : ElementoGeologico
-	{
-		[MaxLength(100)]
-		public string? TipoRoca { get; set; }
+namespace Servidor_Sistema_Geologia.ElementosGeologicos;
 
-		[MaxLength(100)]
-		public string? Litologia { get; set; }
-	}
+public class Roca : ElementoGeologico
+{
+	[EnumDataType(typeof(SubtipoRoca), ErrorMessage = "El tipo de roca no es válido.")]
+	[Display(Name = "Tipo de Roca")]
+	public SubtipoRoca TipoRoca { get; set; } = SubtipoRoca.Desconocido;
+	[MaxLength(200)]
+	[Display(Name = "Litología")]
+	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "La litología solo puede contener letras y espacios.")]
+	public string Litologia { get; set; } = "Desconocida";
 }

@@ -1,215 +1,276 @@
-﻿using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Servidor_Sistema_Geologia.Constants;
-using Servidor_Sistema_Geologia.DAL;
-using Servidor_Sistema_Geologia.Models;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Google;
+using Servidor_Sistema_Geologia.DTO.Auth;
+using Servidor_Sistema_Geologia.Services.Interfaces;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication.Cookies;
 
-namespace Servidor_Sistema_Geologia.Controllers
+namespace Servidor_Sistema_Geologia.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
 {
-	[Route("api/auth")]
-	[ApiController]
-	public class AuthController : ControllerBase
-	{
-		private readonly GestorSistemaGeologia _context;
-		private readonly IConfiguration _configuration;
-		private readonly ILogger<AuthController> _logger;
+    private readonly IAuthService _authService;
+    private readonly ILogger<AuthController> _logger;
 
-		public AuthController(GestorSistemaGeologia context, IConfiguration configuration, ILogger<AuthController> logger)
-		{
-			_context = context;
-			_configuration = configuration;
-			_logger = logger;
-		}
+    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    {
+        _authService = authService;
+        _logger = logger;
+    }
 
-		[HttpPost("login/google")]
-		public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
-		{
-			try
-			{
-				// Verificar configuración de Google
-				var clientId = _configuration["Authentication:Google:ClientId"];
-				if (string.IsNullOrEmpty(clientId))
-				{
-					_logger.LogError("El ClientId de Google no está configurado");
-					return StatusCode(500, new { message = "Configuración de autenticación incompleta" });
-				}
+    /// <summary>
+    /// Registra un nuevo usuario en el sistema
+    /// </summary>
+    [HttpPost("register")]
+    public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto model)
+    {
+        _logger.LogInformation("Solicitud de registro para email: {Email}", model.Email);
 
-				// Log para depuración
-				_logger.LogInformation("Recibido token de Google para validación");
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Datos de registro inválidos",
+                Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+            });
+        }
 
-				// Validar token de Google
-				var settings = new GoogleJsonWebSignature.ValidationSettings
-				{
-					Audience = new[] { clientId }
-				};
+        var resultado = await _authService.RegisterAsync(model);
 
-				var payload = await GoogleJsonWebSignature.ValidateAsync(request.Token, settings);
-				_logger.LogInformation("Token validado correctamente para: {Email}", payload.Email);
+        if (resultado.Success)
+        {
+            return Ok(resultado);
+        }
 
-				// Buscar o crear usuario
-				var user = await _context.Usuarios
-					.FirstOrDefaultAsync(u => u.Email == payload.Email);
+        return BadRequest(resultado);
+    }
 
-				if (user == null)
-				{
-					user = new Usuario
-					{
-						Email = payload.Email,
-						NombreUsuario = payload.Name,
-						NombreCompleto = payload.GivenName + payload.FamilyName,
-						Rol = RolUsuario.Free
-					};
-					_context.Usuarios.Add(user);
-					await _context.SaveChangesAsync();
-				}
+    /// <summary>
+    /// Autentica un usuario en el sistema
+    /// </summary>
+    [HttpPost("login")]
+    public async Task<ActionResult<AuthResponseDto>> Login(LoginDto model)
+    {
+        _logger.LogInformation("Solicitud de login para email: {Email}", model.Email);
 
-				// Crear claims principal
-				var claims = new List<Claim>
-				{
-					new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-					new Claim(ClaimTypes.Email, user.Email),
-					new Claim(ClaimTypes.Name, user.NombreUsuario),
-					new Claim(ClaimTypes.Role, user.Rol.ToString())
-				};
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Datos de login inválidos",
+                Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+            });
+        }
 
-				var claimsIdentity = new ClaimsIdentity(
-					claims,
-					CookieAuthenticationDefaults.AuthenticationScheme
-				);
+        var resultado = await _authService.LoginAsync(model);
 
-				var authProperties = new AuthenticationProperties
-				{
-					AllowRefresh = true,
-					IsPersistent = true,
-					ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
-				};
+        if (resultado.Success)
+        {
+            return Ok(resultado);
+        }
 
-				// Iniciar sesión con claims
-				await HttpContext.SignInAsync(
-					CookieAuthenticationDefaults.AuthenticationScheme,
-					new ClaimsPrincipal(claimsIdentity),
-					authProperties
-				);
+        return Unauthorized(resultado);
+    }
 
-				Response.Cookies.Append("user_id", user.Id.ToString(), new CookieOptions
-				{
-					HttpOnly = false,
-					Secure = false,
-					SameSite = SameSiteMode.Lax,
-					Expires = DateTimeOffset.UtcNow.AddHours(7),
-					Path = "/"
-				});
+    /// <summary>
+    /// Cierra la sesión del usuario actual
+    /// </summary>
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponseDto>> Logout()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        _logger.LogInformation("Solicitud de logout para usuario: {UserId}", userId);
 
-				return Ok(new
-				{
-					user = new
-					{
-						id = user.Id,
-						nombre = user.NombreUsuario,
-						email = user.Email,
-						rol = user.Rol.ToString(),
-					},
-					message = "Autenticación exitosa"
-				});
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error en autenticación: {Message}", ex.Message);
-				return StatusCode(500, new { message = "Error de autenticación", details = ex.Message });
-			}
-		}
+        var resultado = await _authService.LogoutAsync();
 
-		[Authorize]
-		[HttpGet("current-user")]
-		public IActionResult GetCurrentUser()
-		{
-			try
-			{
-				// Obtener claims del usuario autenticado
-				var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+        return Ok(resultado);
+    }
 
-				_logger.LogInformation("Verificando usuario actual, autenticado: {IsAuthenticated}", isAuthenticated);
+    /// <summary>
+    /// Obtiene la información del usuario autenticado actual
+    /// </summary>
+    [HttpGet("me")]
+    public async Task<ActionResult<AuthResponseDto>> GetCurrentUser()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-				if (!isAuthenticated)
-				{
-					return Ok(new { isAuthenticated = false, message = "No autenticado" });
-				}
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Usuario no autenticado"
+            });
+        }
 
-				// Obtener claims del usuario autenticado
-				var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-				var email = User.FindFirstValue(ClaimTypes.Email);
-				var nombre = User.FindFirstValue(ClaimTypes.Name);
-				var rol = User.FindFirstValue(ClaimTypes.Role);
+        var resultado = await _authService.GetCurrentUserAsync(userId);
 
-				if (string.IsNullOrEmpty(userId))
-				{
-					return Unauthorized(new { message = "No autenticado" });
-				}
+        if (resultado.Success)
+        {
+            return Ok(resultado);
+        }
 
-				return Ok(new
-				{
-					user = new
-					{
-						id = int.Parse(userId),
-						email,
-						nombre,
-						rol
-					}
-				});
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error al obtener usuario actual");
-				return StatusCode(500, new { message = "Error interno", details = ex.Message}); 
-			}
-		}
+        return Unauthorized(resultado);
+    }
 
-		// Endpoint para manejar el acceso a páginas protegidas
-		[HttpGet("access-denied")]
-		public IActionResult AccessDenied()
-		{
-			return Unauthorized(new { message = "Acceso denegado. No tienes permisos suficientes." });
-		}
+    /// <summary>
+    /// Cambia la contraseña del usuario autenticado
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponseDto>> ChangePassword(ChangePasswordDto model)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Usuario no autenticado"
+            });
+        }
 
-		[HttpPost("logout")]
-		public async Task<IActionResult> Logout()
-		{
-			try
-			{
-				// Sign out from the authentication system
-				await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Datos inválidos",
+                Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+            });
+        }
 
-				// Delete the user_id cookie with matching attributes
-				Response.Cookies.Delete("user_id", new CookieOptions
-				{
-					HttpOnly = false,
-					Secure = false,
-					SameSite = SameSiteMode.Lax,
-					Path = "/"
-				});
+        _logger.LogInformation("Solicitud de cambio de contraseña para usuario: {UserId}", userId);
 
-				return Ok(new { message = "Cierre de sesión exitoso" });
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error en cierre de sesión");
-				return StatusCode(500, new { message = "Error al cerrar sesión" });
-			}
-		}
+        var resultado = await _authService.ChangePasswordAsync(userId, model);
 
-		// Endpoint para verificar si el usuario está autenticado
-		[HttpGet("check")]
-		public IActionResult CheckAuth()
-		{
-			bool isAuthenticated = User.Identity?.IsAuthenticated ?? false;
+        if (resultado.Success)
+        {
+            return Ok(resultado);
+        }
 
-			return Ok(new { isAuthenticated });
-		}
-	}
+        return BadRequest(resultado);
+    }
+
+    /// <summary>
+    /// Confirma el email del usuario
+    /// </summary>
+    [HttpPost("confirm-email")]
+    public async Task<ActionResult<AuthResponseDto>> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+    {
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "UserId y token son requeridos"
+            });
+        }
+
+        _logger.LogInformation("Solicitud de confirmación de email para usuario: {UserId}", userId);
+
+        var resultado = await _authService.ConfirmEmailAsync(userId, token);
+
+        if (resultado.Success)
+        {
+            return Ok(resultado);
+        }
+
+        return BadRequest(resultado);
+    }
+
+    /// <summary>
+    /// Solicita un enlace de restablecimiento de contraseña
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<AuthResponseDto>> ForgotPassword([FromBody] string email)
+    {
+        if (string.IsNullOrEmpty(email))
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Email es requerido"
+            });
+        }
+
+        _logger.LogInformation("Solicitud de forgot password para email: {Email}", email);
+
+        var resultado = await _authService.ForgotPasswordAsync(email);
+
+        return Ok(resultado);
+    }
+
+    /// <summary>
+    /// Restablece la contraseña usando un token
+    /// </summary>
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<AuthResponseDto>> ResetPassword([FromQuery] string email, [FromQuery] string token, [FromBody] string newPassword)
+    {
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token) || string.IsNullOrEmpty(newPassword))
+        {
+            return BadRequest(new AuthResponseDto
+            {
+                Success = false,
+                Message = "Email, token y nueva contraseña son requeridos"
+            });
+        }
+
+        _logger.LogInformation("Solicitud de reset password para email: {Email}", email);
+
+        var resultado = await _authService.ResetPasswordAsync(email, token, newPassword);
+
+        if (resultado.Success)
+        {
+            return Ok(resultado);
+        }
+
+        return BadRequest(resultado);
+    }
+
+    /// <summary>
+    /// Valida si el usuario actual está autenticado y activo
+    /// </summary>
+    [HttpGet("validate")]
+    [Authorize]
+    public async Task<ActionResult<bool>> ValidateUser()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(false);
+        }
+
+        var isValid = await _authService.ValidateUserAsync(userId);
+        return Ok(isValid);
+    }
+
+
+
+    /// <summary>
+    /// Obtiene información del token JWT actual
+    /// </summary>
+    [HttpGet("token-info")]
+    [Authorize]
+    public ActionResult GetTokenInfo()
+    {
+        var claims = User.Claims.Select(c => new { c.Type, c.Value });
+        
+        return Ok(new
+        {
+            Success = true,
+            Message = "Información del token obtenida",
+            Claims = claims,
+            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            UserName = User.FindFirstValue(ClaimTypes.Name),
+            Email = User.FindFirstValue(ClaimTypes.Email),
+            Role = User.FindFirstValue(ClaimTypes.Role)
+        });
+    }
 }

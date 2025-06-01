@@ -1,16 +1,19 @@
-﻿using Servidor_Sistema_Geologia.Constants;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace Servidor_Sistema_Geologia.Models
+namespace Servidor_Sistema_Geologia;
+
+public class Fosil : ElementoGeologico
 {
-	public class Fosil : ElementoGeologico
-	{
-		[MaxLength(100)]
-		public string? Especie { get; set; }
+	[EnumDataType(typeof(SubtipoFosil), ErrorMessage = "El tipo de fósil no es válido.")]
+	[Display(Name = "Tipo de Fósil")]
+	public SubtipoFosil TipoFosil { get; set; } = SubtipoFosil.Desconocido;
+	[MaxLength(200)]
+	[Display(Name = "Especie")]
+	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "La especie solo puede contener letras y espacios.")]
+	public string Especie { get; set; } = "Por determinar";
 
-		[MaxLength(100)]
-		public string? Periodo { get; set; }
-
-		public SubtipoFosil? TipoFosil { get; set; }
-	}
+	[MaxLength(200)]
+	[Display(Name = "Periodo")]
+	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "El periodo solo puede contener letras y espacios.")]
+	public string Periodo { get; set; } = "Por determinar";
 }
