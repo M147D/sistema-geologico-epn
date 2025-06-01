@@ -53,16 +53,6 @@ builder.Services.AddSwaggerGen(c =>
 	});
 });
 
-// Registro de servicios
-builder.Services.AddAutoMapper(typeof(MappingProfile));
-
-// Registrar servicios para los diferentes tipos de elementos geol�gicos
-builder.Services.AddScoped<IElementoService<Fosil, FosilDto, CreateFosilDto>, FosilService>();
-builder.Services.AddScoped<IElementoService<Roca, RocaDto, CreateRocaDto>, RocaService>();
-// Register the FotoService
-builder.Services.AddScoped<IFotoService<FotoElemento, FotoElementoDto, CreateFotoElementoDto>, FotoElementoService>();
-
-
 // Configurar CORS (una sola pol�tica)
 builder.Services.AddCors(options =>
 {
