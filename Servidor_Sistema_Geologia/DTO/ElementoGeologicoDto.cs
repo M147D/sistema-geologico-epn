@@ -15,7 +15,6 @@
 
 		// Propiedades de navegación
 		public UbicacionDto? Ubicacion { get; set; }
-		public EstadoElementoDto? EstadoElemento { get; set; }
 		public GaleriaElementoGeologicoDto? Galeria { get; set; }
 
 		// ID para crear el registro de acceso

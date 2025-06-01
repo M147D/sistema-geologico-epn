@@ -1,18 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Servidor_Sistema_Geologia.Models
+namespace Servidor_Sistema_Geologia;
+
+public class GaleriaElementoGeologico
 {
-	public class GaleriaElementoGeologico
-	{
-		[Key]
-		public int Id { get; set; }
+	[Key]
+	public int Id { get; set; }
 
-		public int? ElementoGeologicoId { get; set; }
+	public int? ElementoGeologicoId { get; set; }
 
-		public string? DetalleGrupo { get; set; }
+	public string? DetalleGrupo { get; set; }
 
-		public ElementoGeologico? ElementoGeologico { get; set; }
+	public ElementoGeologico? ElementoGeologico { get; set; }
 
-		public List<FotoElemento> Fotos { get; set; } = new List<FotoElemento>();
-	}
+	public List<FotoElemento> Fotos { get; set; } = new List<FotoElemento>();
 }

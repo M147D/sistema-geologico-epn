@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Servidor_Sistema_Geologia.Application;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.Models;
 using System.Collections.Generic;

@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /Servidor_Sistema_Geologia/appsettings.json
 /Servidor_Sistema_Geologia/appsettings.json
+.vscode/launch.json
+.vscode/tasks.json
