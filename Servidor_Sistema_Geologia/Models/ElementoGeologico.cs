@@ -18,17 +18,17 @@ public class ElementoGeologico
 	[Required(ErrorMessage = "El donante es obligatorio")]
 	[StringLength(200, MinimumLength = 1, ErrorMessage = "El donante debe tener entre 1 y 200 caracteres")]
 	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "El donante solo puede contener letras y espacios")]
-	public string? Donante { get; set; }
+	public string Donante { get; set; } = "Sin Donante";
 	[Required(ErrorMessage = "La fecha de ingreso es obligatoria")]
 	[DataType(DataType.Date, ErrorMessage = "La fecha de ingreso debe ser una fecha valida")]
 	[DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
 	[RegularExpression(@"^\d{4}-\d{2}-\d{2}$", ErrorMessage = "La fecha de ingreso debe estar en el formato yyyy-MM-dd")]
 	[Range(typeof(DateTime), "1900-01-01", "2100-12-31", ErrorMessage = "La fecha de ingreso debe estar entre 1900 y 2100")]
-	public DateTime? FechaIngreso { get; set; } = DateTime.Now;
+	public DateTime FechaIngreso { get; set; } = DateTime.Now;
 	[Required(ErrorMessage = "El codigo es obligatorio")]
 	[RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "El codigo solo puede contener letras y numeros")]
 	[StringLength(100, MinimumLength = 1, ErrorMessage = "El codigo debe tener entre 1 y 100 caracteres")]
-	public string? Codigo { get; set; } = string.Empty;
+	public string Codigo { get; set; } = "Sin Codigo";
 	[Required(ErrorMessage = "El numero de ejemplares es obligatorio")]
 	[Range(1, 10000, ErrorMessage = "El numero de ejemplares debe estar entre 1 y 10000")]
 	public uint? Ejemplares { get; set; } = 1;
@@ -39,8 +39,20 @@ public class ElementoGeologico
 	[RegularExpression(@"^(true|false)$", ErrorMessage = "La existencia de lamina debe ser true o false")]
 	[Display(Name = "¿Existe lamina?")]
 	public bool LaminaExiste { get; set; } = false;
-	public int? UbicacionId { get; set; }
-	public int? GaleriaElementosGeologicoId { get; set; }
-	public Ubicacion? Ubicacion { get; set; }
-	public GaleriaElementoGeologico? Galeria { get; set; }
+	
+	// 🔥 CAMPOS PARA SOFT DELETE Y AUDITORÍA
+	[Display(Name = "Fecha de Creación")]
+	public DateTime FechaCreacion { get; set; } = DateTime.Now;
+	
+	[Display(Name = "Estado Activo")]
+	public bool EstadoActivo { get; set; } = true;
+	
+	[Display(Name = "Fecha de Última Actualización")]
+	public DateTime? FechaActualizacion { get; set; }
+	
+	// RELACIONES
+	public int UbicacionId { get; set; } = 0;
+	public int GaleriaElementosGeologicoId { get; set; } = 0;
+	public Ubicacion Ubicacion { get; set; } = new Ubicacion();
+	public GaleriaElementoGeologico Galeria { get; set; } = new GaleriaElementoGeologico();
 }

@@ -54,11 +54,17 @@ builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int
 // Registrar Repositorios
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPaisRepository, PaisRepository>();
+builder.Services.AddScoped<IProvinciaRepository, ProvinciaRepository>();
+builder.Services.AddScoped<IElementoGeologicoRepository, ElementoGeologicoRepository>();
 
 // Registrar Servicios
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IPaisService, PaisService>();
+builder.Services.AddScoped<IProvinciaService, ProvinciaService>();
+builder.Services.AddScoped<IElementoGeologicoService, ElementoGeologicoService>();
 
 // ========================================
 // CONFIGURACIÓN DE JWT AUTHENTICATION
@@ -246,6 +252,12 @@ Console.WriteLine("📋 Endpoints disponibles:");
 Console.WriteLine("   🔐 POST /api/auth/register - Registrar usuario");
 Console.WriteLine("   🔐 POST /api/auth/login - Login (devuelve JWT)");
 Console.WriteLine("   👥 GET /api/users - Listar usuarios (requiere token)");
+Console.WriteLine("   🌎 GET /api/paises - Listar países");
+Console.WriteLine("   🏞️ GET /api/provincias - Listar provincias");
+Console.WriteLine("   🪨 GET /api/elementosgeologicos - Listar elementos geológicos");
+Console.WriteLine("   🦕 GET /api/elementosgeologicos/fosiles - Listar fósiles");
+Console.WriteLine("   💎 GET /api/elementosgeologicos/minerales - Listar minerales");
+Console.WriteLine("   🪨 GET /api/elementosgeologicos/rocas - Listar rocas");
 Console.WriteLine("   📖 /swagger - Documentación API");
 
 app.Run();

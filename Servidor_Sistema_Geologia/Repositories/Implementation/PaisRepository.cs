@@ -69,13 +69,13 @@ public class PaisRepository : IPaisRepository
         // Aplicar ordenamiento
         query = filter.SortBy?.ToLower() switch
         {
-            \"nombre\" or \"nombrepais\" => filter.SortDescending ? 
+            "nombre" or "nombrepais" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.NombrePais) : 
                 query.OrderBy(p => p.NombrePais),
-            \"fecha\" or \"fechacreacion\" => filter.SortDescending ? 
+            "fecha" or "fechacreacion" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.FechaCreacion) : 
                 query.OrderBy(p => p.FechaCreacion),
-            \"estado\" or \"estadoactivo\" => filter.SortDescending ? 
+            "estado" or "estadoactivo" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.EstadoActivo) : 
                 query.OrderBy(p => p.EstadoActivo),
             _ => filter.SortDescending ? 
@@ -137,7 +137,7 @@ public class PaisRepository : IPaisRepository
         _context.Paises.Add(pais);
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🌎 País creado: {NombrePais} (ID: {Id})\", pais.NombrePais, pais.Id);
+        _logger.LogInformation("🌎 País creado: {NombrePais} (ID: {Id})", pais.NombrePais, pais.Id);
         return pais;
     }
 
@@ -148,7 +148,7 @@ public class PaisRepository : IPaisRepository
         _context.Paises.Update(pais);
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🌎 País actualizado: {NombrePais} (ID: {Id})\", pais.NombrePais, pais.Id);
+        _logger.LogInformation("🌎 País actualizado: {NombrePais} (ID: {Id})", pais.NombrePais, pais.Id);
         return pais;
     }
 
@@ -162,7 +162,7 @@ public class PaisRepository : IPaisRepository
         
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🗑️ País eliminado lógicamente: {NombrePais} (ID: {Id})\", pais.NombrePais, id);
+        _logger.LogInformation("🗑️ País eliminado lógicamente: {NombrePais} (ID: {Id})", pais.NombrePais, id);
         return true;
     }
 
@@ -176,7 +176,7 @@ public class PaisRepository : IPaisRepository
         
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🔄 País restaurado: {NombrePais} (ID: {Id})\", pais.NombrePais, id);
+        _logger.LogInformation("🔄 País restaurado: {NombrePais} (ID: {Id})", pais.NombrePais, id);
         return true;
     }
 
@@ -233,9 +233,9 @@ public class PaisRepository : IPaisRepository
     {
         var stats = new Dictionary<string, int>
         {
-            [\"Total\"] = await GetTotalCountAsync(),
-            [\"Activos\"] = await GetActiveCountAsync(),
-            [\"Inactivos\"] = await GetInactiveCountAsync()
+            ["Total"] = await GetTotalCountAsync(),
+            ["Activos"] = await GetActiveCountAsync(),
+            ["Inactivos"] = await GetInactiveCountAsync()
         };
 
         return stats;

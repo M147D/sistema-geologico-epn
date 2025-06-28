@@ -11,7 +11,7 @@ public class ProvinciaService : IProvinciaService
     private readonly ILogger<ProvinciaService> _logger;
 
     public ProvinciaService(
-        IProvinciaRepository provinciaRepository, 
+        IProvinciaRepository provinciaRepository,
         IPaisRepository paisRepository,
         ILogger<ProvinciaService> logger)
     {
@@ -31,24 +31,24 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Provincia no encontrada\"
+                    Message = "Provincia no encontrada"
                 };
             }
 
             return new ProvinciaResponseDto
             {
                 Success = true,
-                Message = \"Provincia obtenida exitosamente\",
+                Message = "Provincia obtenida exitosamente",
                 Data = await MapToProvinciaDetailDtoAsync(provincia)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener provincia por ID: {Id}\", id);
+            _logger.LogError(ex, "Error al obtener provincia por ID: {Id}", id);
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincia\"
+                Message = "Error interno del servidor al obtener provincia"
             };
         }
     }
@@ -63,24 +63,24 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Provincia no encontrada\"
+                    Message = "Provincia no encontrada"
                 };
             }
 
             return new ProvinciaResponseDto
             {
                 Success = true,
-                Message = \"Provincia con información del país obtenida exitosamente\",
+                Message = "Provincia con información del país obtenida exitosamente",
                 Data = await MapToProvinciaDetailDtoAsync(provincia)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener provincia con país por ID: {Id}\", id);
+            _logger.LogError(ex, "Error al obtener provincia con país por ID: {Id}", id);
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincia\"
+                Message = "Error interno del servidor al obtener provincia"
             };
         }
     }
@@ -94,17 +94,17 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciasListResponseDto
             {
                 Success = true,
-                Message = \"Provincias obtenidas exitosamente\",
+                Message = "Provincias obtenidas exitosamente",
                 Data = result
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener lista de provincias\");
+            _logger.LogError(ex, "Error al obtener lista de provincias");
             return new ProvinciasListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincias\"
+                Message = "Error interno del servidor al obtener provincias"
             };
         }
     }
@@ -130,7 +130,7 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciasListResponseDto
             {
                 Success = true,
-                Message = \"Provincias activas obtenidas exitosamente\",
+                Message = "Provincias activas obtenidas exitosamente",
                 Data = new PaginatedProvinciasDto
                 {
                     Provincias = provinciasList,
@@ -145,11 +145,11 @@ public class ProvinciaService : IProvinciaService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener provincias activas\");
+            _logger.LogError(ex, "Error al obtener provincias activas");
             return new ProvinciasListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincias activas\"
+                Message = "Error interno del servidor al obtener provincias activas"
             };
         }
     }
@@ -175,7 +175,7 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciasListResponseDto
             {
                 Success = true,
-                Message = \"Provincias del país obtenidas exitosamente\",
+                Message = "Provincias del país obtenidas exitosamente",
                 Data = new PaginatedProvinciasDto
                 {
                     Provincias = provinciasList,
@@ -190,11 +190,11 @@ public class ProvinciaService : IProvinciaService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener provincias por país: {PaisId}\", paisId);
+            _logger.LogError(ex, "Error al obtener provincias por país: {PaisId}", paisId);
             return new ProvinciasListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincias del país\"
+                Message = "Error interno del servidor al obtener provincias del país"
             };
         }
     }
@@ -211,8 +211,8 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"El país especificado no existe o no está activo\",
-                    Errors = new List<string> { \"País inválido\" }
+                    Message = "El país especificado no existe o no está activo",
+                    Errors = new List<string> { "País inválido" }
                 };
             }
 
@@ -222,8 +222,8 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Ya existe una provincia con este nombre en el país seleccionado\",
-                    Errors = new List<string> { \"Nombre de provincia ya registrado en este país\" }
+                    Message = "Ya existe una provincia con este nombre en el país seleccionado",
+                    Errors = new List<string> { "Nombre de provincia ya registrado en este país" }
                 };
             }
 
@@ -238,17 +238,17 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciaResponseDto
             {
                 Success = true,
-                Message = \"Provincia creada exitosamente\",
+                Message = "Provincia creada exitosamente",
                 Data = await MapToProvinciaDetailDtoAsync(createdProvincia)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al crear provincia: {NombreProvincia}\", createDto.NombreProvincia);
+            _logger.LogError(ex, "Error al crear provincia: {NombreProvincia}", createDto.NombreProvincia);
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al crear provincia\"
+                Message = "Error interno del servidor al crear provincia"
             };
         }
     }
@@ -263,7 +263,7 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Provincia no encontrada\"
+                    Message = "Provincia no encontrada"
                 };
             }
 
@@ -274,8 +274,8 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"El país especificado no existe o no está activo\",
-                    Errors = new List<string> { \"País inválido\" }
+                    Message = "El país especificado no existe o no está activo",
+                    Errors = new List<string> { "País inválido" }
                 };
             }
 
@@ -285,8 +285,8 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Ya existe otra provincia con este nombre en el país seleccionado\",
-                    Errors = new List<string> { \"Nombre de provincia ya registrado por otra provincia en este país\" }
+                    Message = "Ya existe otra provincia con este nombre en el país seleccionado",
+                    Errors = new List<string> { "Nombre de provincia ya registrado por otra provincia en este país" }
                 };
             }
 
@@ -300,17 +300,17 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciaResponseDto
             {
                 Success = true,
-                Message = \"Provincia actualizada exitosamente\",
+                Message = "Provincia actualizada exitosamente",
                 Data = await MapToProvinciaDetailDtoAsync(updatedProvincia)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al actualizar provincia: {Id}\", id);
+            _logger.LogError(ex, "Error al actualizar provincia: {Id}", id);
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al actualizar provincia\"
+                Message = "Error interno del servidor al actualizar provincia"
             };
         }
     }
@@ -325,7 +325,7 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Provincia no encontrada\"
+                    Message = "Provincia no encontrada"
                 };
             }
 
@@ -335,7 +335,7 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"La provincia ya ha sido eliminada previamente\"
+                    Message = "La provincia ya ha sido eliminada previamente"
                 };
             }
 
@@ -345,8 +345,8 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"No se puede eliminar la provincia porque tiene ubicaciones activas asociadas\",
-                    Errors = new List<string> { \"Elimine primero las ubicaciones asociadas\" }
+                    Message = "No se puede eliminar la provincia porque tiene ubicaciones activas asociadas",
+                    Errors = new List<string> { "Elimine primero las ubicaciones asociadas" }
                 };
             }
 
@@ -357,23 +357,23 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = true,
-                    Message = \"Provincia eliminada exitosamente (mantiene registros para auditoría)\"
+                    Message = "Provincia eliminada exitosamente (mantiene registros para auditoría)"
                 };
             }
 
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error al eliminar la provincia\"
+                Message = "Error al eliminar la provincia"
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al eliminar provincia: {Id}\", id);
+            _logger.LogError(ex, "Error al eliminar provincia: {Id}", id);
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al eliminar provincia\"
+                Message = "Error interno del servidor al eliminar provincia"
             };
         }
     }
@@ -388,7 +388,7 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"Provincia no encontrada\"
+                    Message = "Provincia no encontrada"
                 };
             }
 
@@ -398,7 +398,7 @@ public class ProvinciaService : IProvinciaService
                 return new ProvinciaResponseDto
                 {
                     Success = false,
-                    Message = \"La provincia ya está activa\"
+                    Message = "La provincia ya está activa"
                 };
             }
 
@@ -406,27 +406,38 @@ public class ProvinciaService : IProvinciaService
 
             if (success)
             {
+                var restoredProvincia = await _provinciaRepository.GetByIdAsync(id);
+                if (restoredProvincia == null)
+                {
+                    return new ProvinciaResponseDto
+                    {
+                        Success = false,
+                        Message = "Provincia no encontrada después de restaurar",
+                        Data = null
+                    };
+                }
+
                 return new ProvinciaResponseDto
                 {
                     Success = true,
-                    Message = \"Provincia restaurada exitosamente\",
-                    Data = await MapToProvinciaDetailDtoAsync(await _provinciaRepository.GetByIdAsync(id))
+                    Message = "Provincia restaurada exitosamente",
+                    Data = await MapToProvinciaDetailDtoAsync(restoredProvincia)
                 };
             }
 
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error al restaurar la provincia\"
+                Message = "Error al restaurar la provincia"
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al restaurar provincia: {Id}\", id);
+            _logger.LogError(ex, "Error al restaurar provincia: {Id}", id);
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al restaurar provincia\"
+                Message = "Error interno del servidor al restaurar provincia"
             };
         }
     }
@@ -440,7 +451,7 @@ public class ProvinciaService : IProvinciaService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al verificar existencia de provincia: {Id}\", id);
+            _logger.LogError(ex, "Error al verificar existencia de provincia: {Id}", id);
             return false;
         }
     }
@@ -453,7 +464,7 @@ public class ProvinciaService : IProvinciaService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al verificar existencia de provincia por nombre: {NombreProvincia} en país {PaisId}\", nombreProvincia, paisId);
+            _logger.LogError(ex, "Error al verificar existencia de provincia por nombre: {NombreProvincia} en país {PaisId}", nombreProvincia, paisId);
             return false;
         }
     }
@@ -466,7 +477,7 @@ public class ProvinciaService : IProvinciaService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al verificar si se puede eliminar provincia: {Id}\", id);
+            _logger.LogError(ex, "Error al verificar si se puede eliminar provincia: {Id}", id);
             return false;
         }
     }
@@ -481,8 +492,8 @@ public class ProvinciaService : IProvinciaService
             // Crear un objeto usando ProvinciaDetailDto como contenedor de estadísticas
             var statsDto = new ProvinciaDetailDto
             {
-                Id = stats[\"Total\"],
-                NombreProvincia = $\"Total: {stats[\"Total\"]}, Activos: {stats[\"Activos\"]}, Inactivos: {stats[\"Inactivos\"]}\",
+                Id = stats["Total"],
+                NombreProvincia = $"Total: {stats["Total"]}, Activos: {stats["Activos"]}, Inactivos: {stats["Inactivos"]}",
                 EstadoActivo = true,
                 FechaCreacion = DateTime.Now
             };
@@ -490,17 +501,17 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciaResponseDto
             {
                 Success = true,
-                Message = \"Estadísticas obtenidas exitosamente\",
+                Message = "Estadísticas obtenidas exitosamente",
                 Data = statsDto
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener estadísticas de provincias\");
+            _logger.LogError(ex, "Error al obtener estadísticas de provincias");
             return new ProvinciaResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener estadísticas\"
+                Message = "Error interno del servidor al obtener estadísticas"
             };
         }
     }
@@ -526,7 +537,7 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciasListResponseDto
             {
                 Success = true,
-                Message = \"Provincias recientes obtenidas exitosamente\",
+                Message = "Provincias recientes obtenidas exitosamente",
                 Data = new PaginatedProvinciasDto
                 {
                     Provincias = provinciasList,
@@ -541,11 +552,11 @@ public class ProvinciaService : IProvinciaService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener provincias recientes\");
+            _logger.LogError(ex, "Error al obtener provincias recientes");
             return new ProvinciasListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincias recientes\"
+                Message = "Error interno del servidor al obtener provincias recientes"
             };
         }
     }
@@ -566,17 +577,17 @@ public class ProvinciaService : IProvinciaService
             return new ProvinciasListResponseDto
             {
                 Success = true,
-                Message = \"Provincias eliminadas obtenidas exitosamente\",
+                Message = "Provincias eliminadas obtenidas exitosamente",
                 Data = result
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener provincias eliminadas\");
+            _logger.LogError(ex, "Error al obtener provincias eliminadas");
             return new ProvinciasListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener provincias eliminadas\"
+                Message = "Error interno del servidor al obtener provincias eliminadas"
             };
         }
     }

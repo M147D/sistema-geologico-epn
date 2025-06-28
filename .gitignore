@@ -366,4 +366,6 @@ FodyWeavers.xsd
 .vscode/launch.json
 .vscode/tasks.json
 run-project.ps1
-Servidor_Sistema_Geologia/SOFT_DELETE_USUARIOS.md
+*.sh
+*.md
+*.json

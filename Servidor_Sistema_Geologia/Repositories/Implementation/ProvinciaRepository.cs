@@ -75,16 +75,16 @@ public class ProvinciaRepository : IProvinciaRepository
         // Aplicar ordenamiento
         query = filter.SortBy?.ToLower() switch
         {
-            \"nombre\" or \"nombreprovincia\" => filter.SortDescending ? 
+            "nombre" or "nombreprovincia" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.NombreProvincia) : 
                 query.OrderBy(p => p.NombreProvincia),
-            \"pais\" or \"nombrepais\" => filter.SortDescending ? 
+            "pais" or "nombrepais" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.Pais!.NombrePais) : 
                 query.OrderBy(p => p.Pais!.NombrePais),
-            \"fecha\" or \"fechacreacion\" => filter.SortDescending ? 
+            "fecha" or "fechacreacion" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.FechaCreacion) : 
                 query.OrderBy(p => p.FechaCreacion),
-            \"estado\" or \"estadoactivo\" => filter.SortDescending ? 
+            "estado" or "estadoactivo" => filter.SortDescending ? 
                 query.OrderByDescending(p => p.EstadoActivo) : 
                 query.OrderBy(p => p.EstadoActivo),
             _ => filter.SortDescending ? 
@@ -167,7 +167,7 @@ public class ProvinciaRepository : IProvinciaRepository
         _context.Provincias.Add(provincia);
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🏞️ Provincia creada: {NombreProvincia} (ID: {Id})\", provincia.NombreProvincia, provincia.Id);
+        _logger.LogInformation("🏞️ Provincia creada: {NombreProvincia} (ID: {Id})", provincia.NombreProvincia, provincia.Id);
         return provincia;
     }
 
@@ -178,7 +178,7 @@ public class ProvinciaRepository : IProvinciaRepository
         _context.Provincias.Update(provincia);
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🏞️ Provincia actualizada: {NombreProvincia} (ID: {Id})\", provincia.NombreProvincia, provincia.Id);
+        _logger.LogInformation("🏞️ Provincia actualizada: {NombreProvincia} (ID: {Id})", provincia.NombreProvincia, provincia.Id);
         return provincia;
     }
 
@@ -192,7 +192,7 @@ public class ProvinciaRepository : IProvinciaRepository
         
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🗑️ Provincia eliminada lógicamente: {NombreProvincia} (ID: {Id})\", provincia.NombreProvincia, id);
+        _logger.LogInformation("🗑️ Provincia eliminada lógicamente: {NombreProvincia} (ID: {Id})", provincia.NombreProvincia, id);
         return true;
     }
 
@@ -206,7 +206,7 @@ public class ProvinciaRepository : IProvinciaRepository
         
         await _context.SaveChangesAsync();
         
-        _logger.LogInformation(\"🔄 Provincia restaurada: {NombreProvincia} (ID: {Id})\", provincia.NombreProvincia, id);
+        _logger.LogInformation("🔄 Provincia restaurada: {NombreProvincia} (ID: {Id})", provincia.NombreProvincia, id);
         return true;
     }
 
@@ -270,9 +270,9 @@ public class ProvinciaRepository : IProvinciaRepository
     {
         var stats = new Dictionary<string, int>
         {
-            [\"Total\"] = await GetTotalCountAsync(),
-            [\"Activos\"] = await GetActiveCountAsync(),
-            [\"Inactivos\"] = await GetInactiveCountAsync()
+            ["Total"] = await GetTotalCountAsync(),
+            ["Activos"] = await GetActiveCountAsync(),
+            ["Inactivos"] = await GetInactiveCountAsync()
         };
 
         return stats;

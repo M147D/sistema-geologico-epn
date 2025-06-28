@@ -502,8 +502,7 @@ public class UserService : IUserService
                 NombreCompleto = u.NombreCompleto,
                 Rol = u.Rol,
                 FechaCreacion = u.FechaCreacion,
-                EstadoActivo = u.EstadoActivo,
-                EmailConfirmed = u.EmailConfirmed
+                EstadoActivo = u.EstadoActivo
             }).ToList();
 
             return new UsersListResponseDto
@@ -547,8 +546,7 @@ public class UserService : IUserService
                 NombreCompleto = u.NombreCompleto,
                 Rol = u.Rol,
                 FechaCreacion = u.FechaCreacion,
-                EstadoActivo = u.EstadoActivo,
-                EmailConfirmed = u.EmailConfirmed
+                EstadoActivo = u.EstadoActivo
             }).ToList();
 
             return new UsersListResponseDto
@@ -592,8 +590,7 @@ public class UserService : IUserService
                 NombreCompleto = u.NombreCompleto,
                 Rol = u.Rol,
                 FechaCreacion = u.FechaCreacion,
-                EstadoActivo = u.EstadoActivo,
-                EmailConfirmed = u.EmailConfirmed
+                EstadoActivo = u.EstadoActivo
             }).ToList();
 
             return new UsersListResponseDto
