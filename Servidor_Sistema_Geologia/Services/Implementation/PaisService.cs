@@ -26,24 +26,24 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"País no encontrado\"
+                    Message = "País no encontrado"
                 };
             }
 
             return new PaisResponseDto
             {
                 Success = true,
-                Message = \"País obtenido exitosamente\",
+                Message = "País obtenido exitosamente",
                 Data = MapToPaisDetailDto(pais)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener país por ID: {Id}\", id);
+            _logger.LogError(ex, "Error al obtener país por ID: {Id}", id);
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener país\"
+                Message = "Error interno del servidor al obtener país"
             };
         }
     }
@@ -58,7 +58,7 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"País no encontrado\"
+                    Message = "País no encontrado"
                 };
             }
 
@@ -81,17 +81,17 @@ public class PaisService : IPaisService
             return new PaisResponseDto
             {
                 Success = true,
-                Message = \"País con provincias obtenido exitosamente\",
+                Message = "País con provincias obtenido exitosamente",
                 Data = paisDetail
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener país con provincias por ID: {Id}\", id);
+            _logger.LogError(ex, "Error al obtener país con provincias por ID: {Id}", id);
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener país\"
+                Message = "Error interno del servidor al obtener país"
             };
         }
     }
@@ -105,17 +105,17 @@ public class PaisService : IPaisService
             return new PaisesListResponseDto
             {
                 Success = true,
-                Message = \"Países obtenidos exitosamente\",
+                Message = "Países obtenidos exitosamente",
                 Data = result
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener lista de países\");
+            _logger.LogError(ex, "Error al obtener lista de países");
             return new PaisesListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener países\"
+                Message = "Error interno del servidor al obtener países"
             };
         }
     }
@@ -139,7 +139,7 @@ public class PaisService : IPaisService
             return new PaisesListResponseDto
             {
                 Success = true,
-                Message = \"Países activos obtenidos exitosamente\",
+                Message = "Países activos obtenidos exitosamente",
                 Data = new PaginatedPaisesDto
                 {
                     Paises = paisesList,
@@ -154,11 +154,11 @@ public class PaisService : IPaisService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener países activos\");
+            _logger.LogError(ex, "Error al obtener países activos");
             return new PaisesListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener países activos\"
+                Message = "Error interno del servidor al obtener países activos"
             };
         }
     }
@@ -174,8 +174,8 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"Ya existe un país con este nombre\",
-                    Errors = new List<string> { \"Nombre de país ya registrado\" }
+                    Message = "Ya existe un país con este nombre",
+                    Errors = new List<string> { "Nombre de país ya registrado" }
                 };
             }
 
@@ -189,17 +189,17 @@ public class PaisService : IPaisService
             return new PaisResponseDto
             {
                 Success = true,
-                Message = \"País creado exitosamente\",
+                Message = "País creado exitosamente",
                 Data = MapToPaisDetailDto(createdPais)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al crear país: {NombrePais}\", createDto.NombrePais);
+            _logger.LogError(ex, "Error al crear país: {NombrePais}", createDto.NombrePais);
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al crear país\"
+                Message = "Error interno del servidor al crear país"
             };
         }
     }
@@ -214,7 +214,7 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"País no encontrado\"
+                    Message = "País no encontrado"
                 };
             }
 
@@ -224,8 +224,8 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"Ya existe otro país con este nombre\",
-                    Errors = new List<string> { \"Nombre de país ya registrado por otro país\" }
+                    Message = "Ya existe otro país con este nombre",
+                    Errors = new List<string> { "Nombre de país ya registrado por otro país" }
                 };
             }
 
@@ -238,17 +238,17 @@ public class PaisService : IPaisService
             return new PaisResponseDto
             {
                 Success = true,
-                Message = \"País actualizado exitosamente\",
+                Message = "País actualizado exitosamente",
                 Data = MapToPaisDetailDto(updatedPais)
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al actualizar país: {Id}\", id);
+            _logger.LogError(ex, "Error al actualizar país: {Id}", id);
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al actualizar país\"
+                Message = "Error interno del servidor al actualizar país"
             };
         }
     }
@@ -263,7 +263,7 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"País no encontrado\"
+                    Message = "País no encontrado"
                 };
             }
 
@@ -273,7 +273,7 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"El país ya ha sido eliminado previamente\"
+                    Message = "El país ya ha sido eliminado previamente"
                 };
             }
 
@@ -283,8 +283,8 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"No se puede eliminar el país porque tiene provincias activas asociadas\",
-                    Errors = new List<string> { \"Elimine primero las provincias asociadas\" }
+                    Message = "No se puede eliminar el país porque tiene provincias activas asociadas",
+                    Errors = new List<string> { "Elimine primero las provincias asociadas" }
                 };
             }
 
@@ -295,23 +295,23 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = true,
-                    Message = \"País eliminado exitosamente (mantiene registros para auditoría)\"
+                    Message = "País eliminado exitosamente (mantiene registros para auditoría)"
                 };
             }
 
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error al eliminar el país\"
+                Message = "Error al eliminar el país"
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al eliminar país: {Id}\", id);
+            _logger.LogError(ex, "Error al eliminar país: {Id}", id);
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al eliminar país\"
+                Message = "Error interno del servidor al eliminar país"
             };
         }
     }
@@ -326,7 +326,7 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"País no encontrado\"
+                    Message = "País no encontrado"
                 };
             }
 
@@ -336,7 +336,7 @@ public class PaisService : IPaisService
                 return new PaisResponseDto
                 {
                     Success = false,
-                    Message = \"El país ya está activo\"
+                    Message = "El país ya está activo"
                 };
             }
 
@@ -344,27 +344,38 @@ public class PaisService : IPaisService
 
             if (success)
             {
+                var paisRestaurado = await _paisRepository.GetByIdAsync(id);
+                if (paisRestaurado == null)
+                {
+                    return new PaisResponseDto
+                    {
+                        Success = false,
+                        Message = "País no encontrado después de restaurar",
+                        Data = null
+                    };
+                }
+
                 return new PaisResponseDto
                 {
                     Success = true,
-                    Message = \"País restaurado exitosamente\",
-                    Data = MapToPaisDetailDto(await _paisRepository.GetByIdAsync(id))
+                    Message = "País restaurado exitosamente",
+                    Data = MapToPaisDetailDto(paisRestaurado)
                 };
             }
 
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error al restaurar el país\"
+                Message = "Error al restaurar el país"
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al restaurar país: {Id}\", id);
+            _logger.LogError(ex, "Error al restaurar país: {Id}", id);
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al restaurar país\"
+                Message = "Error interno del servidor al restaurar país"
             };
         }
     }
@@ -378,7 +389,7 @@ public class PaisService : IPaisService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al verificar existencia de país: {Id}\", id);
+            _logger.LogError(ex, "Error al verificar existencia de país: {Id}", id);
             return false;
         }
     }
@@ -391,7 +402,7 @@ public class PaisService : IPaisService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al verificar existencia de país por nombre: {NombrePais}\", nombrePais);
+            _logger.LogError(ex, "Error al verificar existencia de país por nombre: {NombrePais}", nombrePais);
             return false;
         }
     }
@@ -404,7 +415,7 @@ public class PaisService : IPaisService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al verificar si se puede eliminar país: {Id}\", id);
+            _logger.LogError(ex, "Error al verificar si se puede eliminar país: {Id}", id);
             return false;
         }
     }
@@ -419,8 +430,8 @@ public class PaisService : IPaisService
             // Crear un objeto usando PaisDetailDto como contenedor de estadísticas
             var statsDto = new PaisDetailDto
             {
-                Id = stats[\"Total\"],
-                NombrePais = $\"Total: {stats[\"Total\"]}, Activos: {stats[\"Activos\"]}, Inactivos: {stats[\"Inactivos\"]}\",
+                Id = stats["Total"],
+                NombrePais = $"Total: {stats["Total"]}, Activos: {stats["Activos"]}, Inactivos: {stats["Inactivos"]}",
                 EstadoActivo = true,
                 FechaCreacion = DateTime.Now
             };
@@ -428,17 +439,17 @@ public class PaisService : IPaisService
             return new PaisResponseDto
             {
                 Success = true,
-                Message = \"Estadísticas obtenidas exitosamente\",
+                Message = "Estadísticas obtenidas exitosamente",
                 Data = statsDto
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener estadísticas de países\");
+            _logger.LogError(ex, "Error al obtener estadísticas de países");
             return new PaisResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener estadísticas\"
+                Message = "Error interno del servidor al obtener estadísticas"
             };
         }
     }
@@ -462,7 +473,7 @@ public class PaisService : IPaisService
             return new PaisesListResponseDto
             {
                 Success = true,
-                Message = \"Países recientes obtenidos exitosamente\",
+                Message = "Países recientes obtenidos exitosamente",
                 Data = new PaginatedPaisesDto
                 {
                     Paises = paisesList,
@@ -477,11 +488,11 @@ public class PaisService : IPaisService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener países recientes\");
+            _logger.LogError(ex, "Error al obtener países recientes");
             return new PaisesListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener países recientes\"
+                Message = "Error interno del servidor al obtener países recientes"
             };
         }
     }
@@ -502,17 +513,17 @@ public class PaisService : IPaisService
             return new PaisesListResponseDto
             {
                 Success = true,
-                Message = \"Países eliminados obtenidos exitosamente\",
+                Message = "Países eliminados obtenidos exitosamente",
                 Data = result
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, \"Error al obtener países eliminados\");
+            _logger.LogError(ex, "Error al obtener países eliminados");
             return new PaisesListResponseDto
             {
                 Success = false,
-                Message = \"Error interno del servidor al obtener países eliminados\"
+                Message = "Error interno del servidor al obtener países eliminados"
             };
         }
     }
@@ -520,6 +531,9 @@ public class PaisService : IPaisService
     // 🔄 MÉTODOS AUXILIARES
     private static PaisDetailDto MapToPaisDetailDto(Pais pais)
     {
+        if (pais == null)
+            throw new ArgumentNullException(nameof(pais));
+
         return new PaisDetailDto
         {
             Id = pais.Id,

@@ -6,7 +6,8 @@ public class Ubicacion
 {
 	[Key]
 	public int Id { get; set; }
-	public int? ProvinciaId { get; set; } =	0;
+	
+	public int? ProvinciaId { get; set; } = 0;
 	public int? PaisId { get; set; } = 0;
 
 	[StringLength(60)]
@@ -24,7 +25,19 @@ public class Ubicacion
 	[StringLength(60)]
 	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "El nombre de la ubicación solo puede contener letras y espacios.")]
 	public string Leyenda { get; set; } = "Sin leyenda";
-	public Pais? Pais { get; set; }
-	public Provincia? Provincia { get; set; }
+	
+	// 🔥 CAMPOS PARA SOFT DELETE Y AUDITORÍA
+	[Display(Name = "Fecha de Creación")]
+	public DateTime FechaCreacion { get; set; } = DateTime.Now;
+	
+	[Display(Name = "Estado Activo")]
+	public bool EstadoActivo { get; set; } = true;
+	
+	[Display(Name = "Fecha de Última Actualización")]
+	public DateTime? FechaActualizacion { get; set; }
+	
+	// RELACIONES
+	public Pais Pais { get; set; } = new Pais();
+	public Provincia Provincia { get; set; } = new Provincia();
 	public List<ElementoGeologico> ElementosGeologicos { get; } = new List<ElementoGeologico>();
 }

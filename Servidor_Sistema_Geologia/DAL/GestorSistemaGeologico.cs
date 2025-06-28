@@ -158,6 +158,21 @@ public class GestorSistemaGeologia : IdentityDbContext<Usuario, Microsoft.AspNet
 			.HasMaxLength(100)
 			.IsRequired();
 
+		// 🔥 CONFIGURACIÓN DE SOFT DELETE PARA ELEMENTOS GEOLÓGICOS
+		modelBuilder.Entity<ElementoGeologico>()
+			.Property(e => e.FechaCreacion)
+			.IsRequired()
+			.HasDefaultValueSql("GETDATE()");
+
+		modelBuilder.Entity<ElementoGeologico>()
+			.Property(e => e.EstadoActivo)
+			.IsRequired()
+			.HasDefaultValue(true);
+
+		modelBuilder.Entity<ElementoGeologico>()
+			.Property(e => e.FechaActualizacion)
+			.IsRequired(false);
+
 		// Índices para mejor rendimiento
 		modelBuilder.Entity<ElementoGeologico>()
 			.HasIndex(e => e.Codigo)

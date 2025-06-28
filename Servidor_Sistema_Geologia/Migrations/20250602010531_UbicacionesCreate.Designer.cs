@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Servidor_Sistema_Geologia;
 
@@ -11,9 +12,11 @@ using Servidor_Sistema_Geologia;
 namespace Servidor_Sistema_Geologia.Migrations
 {
     [DbContext(typeof(GestorSistemaGeologia))]
-    partial class GestorSistemaGeologiaModelSnapshot : ModelSnapshot
+    [Migration("20250602010531_UbicacionesCreate")]
+    partial class UbicacionesCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -185,23 +188,11 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<long>("Ejemplares")
                         .HasColumnType("bigint");
 
-                    b.Property<bool>("EstadoActivo")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<DateTime?>("FechaActualizacion")
+                    b.Property<DateTime?>("FechaIngreso")
+                        .IsRequired()
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("FechaCreacion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
-
-                    b.Property<DateTime>("FechaIngreso")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("GaleriaElementosGeologicoId")
+                    b.Property<int?>("GaleriaElementosGeologicoId")
                         .HasColumnType("int");
 
                     b.Property<bool>("LaminaExiste")
@@ -217,7 +208,7 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasMaxLength(21)
                         .HasColumnType("nvarchar(21)");
 
-                    b.Property<int>("UbicacionId")
+                    b.Property<int?>("UbicacionId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -227,7 +218,8 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasDatabaseName("IX_ElementosGeologicos_Codigo");
 
                     b.HasIndex("GaleriaElementosGeologicoId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[GaleriaElementosGeologicoId] IS NOT NULL");
 
                     b.HasIndex("UbicacionId");
 
@@ -632,14 +624,12 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.HasOne("Servidor_Sistema_Geologia.Galeria.GaleriaElementoGeologico", "Galeria")
                         .WithOne("ElementoGeologico")
                         .HasForeignKey("Servidor_Sistema_Geologia.ElementoGeologico", "GaleriaElementosGeologicoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Servidor_Sistema_Geologia.Ubicacion", "Ubicacion")
                         .WithMany("ElementosGeologicos")
                         .HasForeignKey("UbicacionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Galeria");
 
