@@ -41,6 +41,29 @@ public abstract class CreateElementoGeologicoBaseDto
 
     public int? UbicacionId { get; set; }
     
+    // Datos de ubicación para creación inline (opcional)
+    [RegularExpression(@"^-?([0-9]{1,2})\.([0-9]+)$", ErrorMessage = "La latitud debe ser un número decimal válido")]
+    public string? Latitud { get; set; }
+    
+    [RegularExpression(@"^-?([0-9]{1,3})\.([0-9]+)$", ErrorMessage = "La longitud debe ser un número decimal válido")]
+    public string? Longitud { get; set; }
+    
+    [StringLength(200, ErrorMessage = "La localidad no puede exceder los 200 caracteres")]
+    [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$", ErrorMessage = "La localidad solo puede contener letras y espacios")]
+    public string? Localidad { get; set; }
+    
+    [StringLength(500, ErrorMessage = "La leyenda no puede exceder los 500 caracteres")]
+    [RegularExpression(@"^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s,;.-]*$", ErrorMessage = "La leyenda solo puede contener letras, números, espacios y algunos caracteres especiales")]
+    public string? Leyenda { get; set; }
+    
+    [StringLength(100, ErrorMessage = "El nombre del país no puede exceder los 100 caracteres")]
+    [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$", ErrorMessage = "El nombre del país solo puede contener letras y espacios")]
+    public string? NombrePais { get; set; }
+    
+    [StringLength(100, ErrorMessage = "El nombre de la provincia no puede exceder los 100 caracteres")]
+    [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$", ErrorMessage = "El nombre de la provincia solo puede contener letras y espacios")]
+    public string? NombreProvincia { get; set; }
+    
     public int UsuarioId { get; set; } // Para el historial de acceso
 }
 

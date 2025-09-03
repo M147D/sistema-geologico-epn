@@ -493,6 +493,20 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
         return roca;
     }
 
+    // 🏢 OPERACIONES CON UBICACIONES
+    public async Task<Ubicacion> CreateUbicacionAsync(Ubicacion ubicacion)
+    {
+        // Ensure no navigation properties are being tracked to avoid FK issues
+        ubicacion.Pais = null;
+        ubicacion.Provincia = null;
+        
+        _context.Ubicaciones.Add(ubicacion);
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation("📍 Ubicación creada: {Localidad} (ID: {Id})", ubicacion.Localidad, ubicacion.Id);
+        return ubicacion;
+    }
+
     // ✅ VALIDACIONES
     public async Task<bool> ExistsAsync(int id)
     {

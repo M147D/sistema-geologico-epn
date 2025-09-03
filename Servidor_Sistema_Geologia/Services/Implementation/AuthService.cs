@@ -37,7 +37,7 @@ public class AuthService : IAuthService
             }
 
             // Crear nuevo usuario
-            var usuario = new Usuario
+            var usuario = new Servidor_Sistema_Geologia.Usuario
             {
                 UserName = model.Email,
                 Email = model.Email,
