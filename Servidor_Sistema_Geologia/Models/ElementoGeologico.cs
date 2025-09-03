@@ -53,6 +53,6 @@ public class ElementoGeologico
 	// RELACIONES
 	public int UbicacionId { get; set; } = 0;
 	public int GaleriaElementosGeologicoId { get; set; } = 0;
-	public Ubicacion Ubicacion { get; set; } = new Ubicacion();
+	public Ubicacion? Ubicacion { get; set; }
 	public GaleriaElementoGeologico Galeria { get; set; } = new GaleriaElementoGeologico();
 }

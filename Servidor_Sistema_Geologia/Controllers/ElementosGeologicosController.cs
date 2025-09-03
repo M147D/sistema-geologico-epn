@@ -2,903 +2,416 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Services.Interfaces;
+using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using System.Security.Claims;
 
 namespace Servidor_Sistema_Geologia.Controllers;
 
+[Route("api/elementos-geologicos")]
 [ApiController]
-[Route("api/[controller]")]
-[Authorize] // Requiere autenticación para todas las acciones
 public class ElementosGeologicosController : ControllerBase
 {
-    private readonly IElementoGeologicoService _elementoService;
-    private readonly ILogger<ElementosGeologicosController> _logger;
+    private readonly IFosilService _fosilService;
+    private readonly IMineralService _mineralService;
+    private readonly IRocaService _rocaService;
+    private readonly IElementoGeologicoRepository _elementoRepository;
 
     public ElementosGeologicosController(
-        IElementoGeologicoService elementoService,
-        ILogger<ElementosGeologicosController> logger)
+        IFosilService fosilService, 
+        IMineralService mineralService, 
+        IRocaService rocaService,
+        IElementoGeologicoRepository elementoRepository)
     {
-        _elementoService = elementoService;
-        _logger = logger;
+        _fosilService = fosilService;
+        _mineralService = mineralService;
+        _rocaService = rocaService;
+        _elementoRepository = elementoRepository;
     }
 
-    // 🔍 CONSULTAS GENERALES
+    // ===========================================
+    // ENDPOINTS GENERALES (TODOS LOS ELEMENTOS)
+    // ===========================================
 
     /// <summary>
-    /// Obtiene todos los elementos geológicos con filtros y paginación
+    /// Obtiene todos los elementos geológicos, opcionalmente filtrados por tipo
     /// </summary>
+    /// <param name="tipo">Filtro opcional por tipo: "Fosil", "Mineral", "Roca"</param>
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] ElementoGeologicoFilterDto filter)
+    [Authorize(Roles = "Admin,Premium")]
+    public async Task<ActionResult> GetAll([FromQuery] string? tipo = null)
     {
         try
         {
-            var result = await _elementoService.GetAllAsync(filter);
-            
-            if (!result.Success)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(result);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            return Ok(result);
+            var filter = new ElementoGeologicoFilterDto();
+
+            var result = tipo?.ToLower() switch
+            {
+                "fosil" => await _fosilService.GetAllAsync(filter),
+                "mineral" => await _mineralService.GetAllAsync(filter),
+                "roca" => await _rocaService.GetAllAsync(filter),
+                _ => await GetAllElements(filter)
+            };
+
+            return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetAll elementos geológicos");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al obtener elementos geológicos: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Obtiene todos los elementos geológicos activos (sin paginación)
+    /// Obtiene un elemento geológico por ID (detecta automáticamente el tipo)
     /// </summary>
-    [HttpGet("activos")]
-    public async Task<IActionResult> GetAllActive()
+    [HttpGet("{id}")]
+    [Authorize(Roles = "Admin,Premium")]
+    public async Task<ActionResult> GetById(int id)
     {
         try
         {
-            var result = await _elementoService.GetAllActiveAsync();
-            
-            if (!result.Success)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(result);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            return Ok(result);
+            // Intentamos obtener el elemento de cada servicio hasta encontrarlo
+            var fosilResult = await _fosilService.GetByIdAsync(id, usuarioId);
+            if (fosilResult.Success)
+                return Ok(fosilResult.Data);
+
+            var mineralResult = await _mineralService.GetByIdAsync(id, usuarioId);
+            if (mineralResult.Success)
+                return Ok(mineralResult.Data);
+
+            var rocaResult = await _rocaService.GetByIdAsync(id, usuarioId);
+            if (rocaResult.Success)
+                return Ok(rocaResult.Data);
+
+            return NotFound("Elemento geológico no encontrado");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetAllActive elementos geológicos");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al obtener elemento geológico: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// Obtiene un elemento geológico por ID
-    /// </summary>
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
-    {
-        try
-        {
-            var usuarioId = GetCurrentUserId();
-            var result = await _elementoService.GetByIdAsync(id, usuarioId);
-            
-            if (!result.Success)
-            {
-                if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetById elemento geológico ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
+    // ===========================================
+    // ENDPOINTS ESPECÍFICOS POR TIPO
+    // ===========================================
 
     /// <summary>
-    /// Obtiene un elemento geológico con detalles completos (ubicación, galería, fotos)
-    /// </summary>
-    [HttpGet("{id:int}/detalles")]
-    public async Task<IActionResult> GetByIdWithDetails(int id)
-    {
-        try
-        {
-            var usuarioId = GetCurrentUserId();
-            var result = await _elementoService.GetByIdWithDetailsAsync(id, usuarioId);
-            
-            if (!result.Success)
-            {
-                if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByIdWithDetails elemento geológico ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    /// <summary>
-    /// Obtiene un elemento geológico por código
-    /// </summary>
-    [HttpGet("codigo/{codigo}")]
-    public async Task<IActionResult> GetByCodigo(string codigo)
-    {
-        try
-        {
-            var usuarioId = GetCurrentUserId();
-            var result = await _elementoService.GetByCodigoAsync(codigo, usuarioId);
-            
-            if (!result.Success)
-            {
-                if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByCodigo elemento geológico código: {Codigo}", codigo);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // 🔍 CONSULTAS ESPECÍFICAS POR TIPO
-
-    /// <summary>
-    /// Obtiene todos los fósiles con filtros
+    /// Obtiene todos los fósiles
     /// </summary>
     [HttpGet("fosiles")]
-    public async Task<IActionResult> GetFosiles([FromQuery] ElementoGeologicoFilterDto filter)
+    [Authorize(Roles = "Admin,Premium")]
+    public async Task<ActionResult> GetFosiles()
     {
         try
         {
-            var result = await _elementoService.GetFosilesAsync(filter);
-            
-            if (!result.Success)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(result);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            return Ok(result);
+            var result = await _fosilService.GetAllAsync(new ElementoGeologicoFilterDto());
+            return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetFosiles");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al obtener fósiles: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Obtiene todos los minerales con filtros
+    /// Obtiene todos los minerales
     /// </summary>
     [HttpGet("minerales")]
-    public async Task<IActionResult> GetMinerales([FromQuery] ElementoGeologicoFilterDto filter)
+    [Authorize(Roles = "Admin,Premium")]
+    public async Task<ActionResult> GetMinerales()
     {
         try
         {
-            var result = await _elementoService.GetMineralesAsync(filter);
-            
-            if (!result.Success)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(result);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            return Ok(result);
+            var result = await _mineralService.GetAllAsync(new ElementoGeologicoFilterDto());
+            return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetMinerales");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al obtener minerales: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Obtiene todas las rocas con filtros
+    /// Obtiene todas las rocas
     /// </summary>
     [HttpGet("rocas")]
-    public async Task<IActionResult> GetRocas([FromQuery] ElementoGeologicoFilterDto filter)
+    [Authorize(Roles = "Admin,Premium")]
+    public async Task<ActionResult> GetRocas()
     {
         try
         {
-            var result = await _elementoService.GetRocasAsync(filter);
-            
-            if (!result.Success)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(result);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            return Ok(result);
+            var result = await _rocaService.GetAllAsync(new ElementoGeologicoFilterDto());
+            return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetRocas");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al obtener rocas: {ex.Message}");
         }
     }
 
-    // 🔍 CONSULTAS POR UBICACIÓN
-
-    /// <summary>
-    /// Obtiene elementos geológicos por ubicación
-    /// </summary>
-    [HttpGet("ubicacion/{ubicacionId:int}")]
-    public async Task<IActionResult> GetByUbicacion(int ubicacionId)
-    {
-        try
-        {
-            var result = await _elementoService.GetByUbicacionAsync(ubicacionId);
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByUbicacion ID: {UbicacionId}", ubicacionId);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    /// <summary>
-    /// Obtiene elementos geológicos por país
-    /// </summary>
-    [HttpGet("pais/{paisId:int}")]
-    public async Task<IActionResult> GetByPais(int paisId)
-    {
-        try
-        {
-            var result = await _elementoService.GetByPaisAsync(paisId);
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByPais ID: {PaisId}", paisId);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    /// <summary>
-    /// Obtiene elementos geológicos por provincia
-    /// </summary>
-    [HttpGet("provincia/{provinciaId:int}")]
-    public async Task<IActionResult> GetByProvincia(int provinciaId)
-    {
-        try
-        {
-            var result = await _elementoService.GetByProvinciaAsync(provinciaId);
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByProvincia ID: {ProvinciaId}", provinciaId);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // ✏️ OPERACIONES CRUD - FÓSILES
+    // ===========================================
+    // ENDPOINTS DE CREACIÓN POR TIPO
+    // ===========================================
 
     /// <summary>
     /// Crea un nuevo fósil
     /// </summary>
     [HttpPost("fosiles")]
-    [Authorize(Roles = "Administrador,Geologo")] // Solo admin y geólogos pueden crear
-    public async Task<IActionResult> CreateFosil([FromBody] CreateFosilDto createDto)
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> CreateFosil(CreateFosilDto createDto)
     {
         try
         {
-            if (!ModelState.IsValid)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(ModelState);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            createDto.UsuarioId = GetCurrentUserId();
-            var result = await _elementoService.CreateFosilAsync(createDto);
-            
+            var result = await _fosilService.CreateAsync(createDto, usuarioId);
             if (!result.Success)
             {
-                return BadRequest(result);
+                return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
-            return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result.Data);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en CreateFosil: {Nombre}", createDto.Nombre);
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al crear fósil: {ex.Message}");
         }
     }
-
-    /// <summary>
-    /// Actualiza un fósil existente
-    /// </summary>
-    [HttpPut("fosiles/{id:int}")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> UpdateFosil(int id, [FromBody] UpdateFosilDto updateDto)
-    {
-        try
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            updateDto.UsuarioId = GetCurrentUserId();
-            var result = await _elementoService.UpdateFosilAsync(id, updateDto);
-            
-            if (!result.Success)
-            {
-                if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en UpdateFosil ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // ✏️ OPERACIONES CRUD - MINERALES
 
     /// <summary>
     /// Crea un nuevo mineral
     /// </summary>
     [HttpPost("minerales")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> CreateMineral([FromBody] CreateMineralDto createDto)
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> CreateMineral(CreateMineralDto createDto)
     {
         try
         {
-            if (!ModelState.IsValid)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(ModelState);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            createDto.UsuarioId = GetCurrentUserId();
-            var result = await _elementoService.CreateMineralAsync(createDto);
-            
+            var result = await _mineralService.CreateAsync(createDto, usuarioId);
             if (!result.Success)
             {
-                return BadRequest(result);
+                return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
-            return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result.Data);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en CreateMineral: {Nombre}", createDto.Nombre);
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al crear mineral: {ex.Message}");
         }
     }
-
-    /// <summary>
-    /// Actualiza un mineral existente
-    /// </summary>
-    [HttpPut("minerales/{id:int}")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> UpdateMineral(int id, [FromBody] UpdateMineralDto updateDto)
-    {
-        try
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            updateDto.UsuarioId = GetCurrentUserId();
-            var result = await _elementoService.UpdateMineralAsync(id, updateDto);
-            
-            if (!result.Success)
-            {
-                if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en UpdateMineral ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // ✏️ OPERACIONES CRUD - ROCAS
 
     /// <summary>
     /// Crea una nueva roca
     /// </summary>
     [HttpPost("rocas")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> CreateRoca([FromBody] CreateRocaDto createDto)
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> CreateRoca(CreateRocaDto createDto)
     {
         try
         {
-            if (!ModelState.IsValid)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(ModelState);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            createDto.UsuarioId = GetCurrentUserId();
-            var result = await _elementoService.CreateRocaAsync(createDto);
-            
+            var result = await _rocaService.CreateAsync(createDto, usuarioId);
             if (!result.Success)
             {
-                return BadRequest(result);
+                return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
-            return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.Data?.Id }, result.Data);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en CreateRoca: {Nombre}", createDto.Nombre);
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al crear roca: {ex.Message}");
         }
     }
 
+    // ===========================================
+    // ENDPOINTS DE ACTUALIZACIÓN POR TIPO
+    // ===========================================
+
     /// <summary>
-    /// Actualiza una roca existente
+    /// Actualiza un fósil específico
     /// </summary>
-    [HttpPut("rocas/{id:int}")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> UpdateRoca(int id, [FromBody] UpdateRocaDto updateDto)
+    [HttpPut("fosiles/{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> UpdateFosil(int id, UpdateFosilDto updateDto)
     {
         try
         {
-            if (!ModelState.IsValid)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(ModelState);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            updateDto.UsuarioId = GetCurrentUserId();
-            var result = await _elementoService.UpdateRocaAsync(id, updateDto);
-            
-            if (!result.Success)
-            {
-                if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en UpdateRoca ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // ✏️ OPERACIONES COMUNES
-
-    /// <summary>
-    /// Elimina lógicamente un elemento geológico (soft delete)
-    /// </summary>
-    [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Administrador")] // Solo administradores pueden eliminar
-    public async Task<IActionResult> Delete(int id)
-    {
-        try
-        {
-            var usuarioId = GetCurrentUserId();
-            var result = await _elementoService.DeleteAsync(id, usuarioId);
-            
+            var result = await _fosilService.UpdateAsync(id, updateDto, usuarioId);
             if (!result.Success)
             {
                 if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
+                    return NotFound(result.Message);
+                return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
-            return Ok(result);
+            return Ok(result.Data);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en Delete elemento geológico ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al actualizar fósil: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Restaura un elemento geológico eliminado
+    /// Actualiza un mineral específico
     /// </summary>
-    [HttpPost("{id:int}/restaurar")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Restore(int id)
+    [HttpPut("minerales/{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> UpdateMineral(int id, UpdateMineralDto updateDto)
     {
         try
         {
-            var usuarioId = GetCurrentUserId();
-            var result = await _elementoService.RestoreAsync(id, usuarioId);
-            
+            if (!TryGetUsuarioId(out int usuarioId))
+            {
+                return Unauthorized("Usuario no autenticado");
+            }
+
+            var result = await _mineralService.UpdateAsync(id, updateDto, usuarioId);
             if (!result.Success)
             {
                 if (result.Message.Contains("no encontrado"))
-                {
-                    return NotFound(result);
-                }
-                return BadRequest(result);
+                    return NotFound(result.Message);
+                return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
-            return Ok(result);
+            return Ok(result.Data);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en Restore elemento geológico ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // ✅ VALIDACIONES
-
-    /// <summary>
-    /// Verifica si existe un elemento geológico por ID
-    /// </summary>
-    [HttpGet("{id:int}/existe")]
-    public async Task<IActionResult> Exists(int id)
-    {
-        try
-        {
-            var exists = await _elementoService.ExistsAsync(id);
-            return Ok(new { exists });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en Exists elemento geológico ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al actualizar mineral: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// Verifica si existe un elemento geológico por código
+    /// Actualiza una roca específica
     /// </summary>
-    [HttpGet("codigo/{codigo}/existe")]
-    public async Task<IActionResult> ExistsByCodigo(string codigo, [FromQuery] int? excludeId = null)
+    [HttpPut("rocas/{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> UpdateRoca(int id, UpdateRocaDto updateDto)
     {
         try
         {
-            var exists = await _elementoService.ExistsByCodigoAsync(codigo, excludeId);
-            return Ok(new { exists });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en ExistsByCodigo código: {Codigo}", codigo);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
+            if (!TryGetUsuarioId(out int usuarioId))
+            {
+                return Unauthorized("Usuario no autenticado");
+            }
 
-    /// <summary>
-    /// Verifica si un elemento puede ser eliminado
-    /// </summary>
-    [HttpGet("{id:int}/puede-eliminar")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> CanDelete(int id)
-    {
-        try
-        {
-            var canDelete = await _elementoService.CanDeleteAsync(id);
-            return Ok(new { canDelete });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en CanDelete elemento geológico ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // 📊 ESTADÍSTICAS Y REPORTES
-
-    /// <summary>
-    /// Obtiene estadísticas generales del sistema
-    /// </summary>
-    [HttpGet("estadisticas")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> GetStats()
-    {
-        try
-        {
-            var result = await _elementoService.GetStatsAsync();
-            
+            var result = await _rocaService.UpdateAsync(id, updateDto, usuarioId);
             if (!result.Success)
             {
-                return BadRequest(result);
+                if (result.Message.Contains("no encontrado"))
+                    return NotFound(result.Message);
+                return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
-            return Ok(result);
+            return Ok(result.Data);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetStats");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al actualizar roca: {ex.Message}");
         }
     }
 
+    // ===========================================
+    // ENDPOINTS DE ELIMINACIÓN
+    // ===========================================
+
     /// <summary>
-    /// Obtiene elementos geológicos recientes
+    /// Elimina un elemento geológico por ID (detecta automáticamente el tipo)
     /// </summary>
-    [HttpGet("recientes")]
-    public async Task<IActionResult> GetRecent([FromQuery] int count = 10)
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> Delete(int id)
     {
         try
         {
-            var result = await _elementoService.GetRecentAsync(count);
-            
-            if (!result.Success)
+            if (!TryGetUsuarioId(out int usuarioId))
             {
-                return BadRequest(result);
+                return Unauthorized("Usuario no autenticado");
             }
 
-            return Ok(result);
+            // Intentamos eliminar del servicio correspondiente
+            if (await _fosilService.DeleteAsync(id, usuarioId))
+                return Ok(new { success = true, message = "Fósil eliminado exitosamente" });
+
+            if (await _mineralService.DeleteAsync(id, usuarioId))
+                return Ok(new { success = true, message = "Mineral eliminado exitosamente" });
+
+            if (await _rocaService.DeleteAsync(id, usuarioId))
+                return Ok(new { success = true, message = "Roca eliminada exitosamente" });
+
+            return NotFound("Elemento geológico no encontrado");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error en GetRecent");
-            return StatusCode(500, new { message = "Error interno del servidor" });
+            return BadRequest($"Error al eliminar elemento geológico: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// Obtiene elementos geológicos eliminados
-    /// </summary>
-    [HttpGet("eliminados")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> GetInactive()
-    {
-        try
-        {
-            var result = await _elementoService.GetInactiveAsync();
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
+    // ===========================================
+    // MÉTODOS AUXILIARES PRIVADOS
+    // ===========================================
 
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetInactive");
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
+    /// <summary>
+    /// Obtiene todos los elementos geológicos de todos los tipos combinados
+    /// </summary>
+    private async Task<PaginatedElementosGeologicosDto> GetAllElements(ElementoGeologicoFilterDto filter)
+    {
+        // Use the unified repository to get all elements at once
+        return await _elementoRepository.GetAllAsync(filter);
     }
 
-    /// <summary>
-    /// Obtiene estadísticas para el dashboard
-    /// </summary>
-    [HttpGet("dashboard")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> GetDashboardStats()
-    {
-        try
-        {
-            var result = await _elementoService.GetDashboardStatsAsync();
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetDashboardStats");
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // 🔍 BÚSQUEDAS AVANZADAS
 
     /// <summary>
-    /// Búsqueda avanzada de elementos geológicos
+    /// Obtiene el ID del usuario desde el token JWT
     /// </summary>
-    [HttpGet("buscar")]
-    public async Task<IActionResult> Search([FromQuery] string searchTerm, [FromQuery] ElementoGeologicoFilterDto? filter = null)
+    private bool TryGetUsuarioId(out int usuarioId)
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                return BadRequest(new { message = "El término de búsqueda es requerido" });
-            }
-
-            var result = await _elementoService.SearchAsync(searchTerm, filter);
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en Search término: {SearchTerm}", searchTerm);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    /// <summary>
-    /// Obtiene elementos geológicos por rango de fechas
-    /// </summary>
-    [HttpGet("rango-fechas")]
-    public async Task<IActionResult> GetByDateRange([FromQuery] DateTime desde, [FromQuery] DateTime hasta)
-    {
-        try
-        {
-            if (desde > hasta)
-            {
-                return BadRequest(new { message = "La fecha desde no puede ser mayor que la fecha hasta" });
-            }
-
-            var result = await _elementoService.GetByDateRangeAsync(desde, hasta);
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByDateRange desde: {Desde} hasta: {Hasta}", desde, hasta);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    /// <summary>
-    /// Obtiene elementos geológicos por donante
-    /// </summary>
-    [HttpGet("donante")]
-    public async Task<IActionResult> GetByDonante([FromQuery] string donante)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(donante))
-            {
-                return BadRequest(new { message = "El nombre del donante es requerido" });
-            }
-
-            var result = await _elementoService.GetByDonanteAsync(donante);
-            
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetByDonante: {Donante}", donante);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // 🔄 HISTORIAL
-
-    /// <summary>
-    /// Obtiene el historial de acceso de un elemento geológico
-    /// </summary>
-    [HttpGet("{id:int}/historial")]
-    [Authorize(Roles = "Administrador,Geologo")]
-    public async Task<IActionResult> GetHistorial(int id)
-    {
-        try
-        {
-            var historial = await _elementoService.GetHistorialAsync(id);
-            return Ok(new { historial });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en GetHistorial elemento ID: {Id}", id);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    /// <summary>
-    /// Registra manualmente un acceso en el historial
-    /// </summary>
-    [HttpPost("{id:int}/registrar-acceso")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> RegisterAccess(int id, [FromBody] AccionesUsuario accion)
-    {
-        try
-        {
-            var usuarioId = GetCurrentUserId();
-            await _elementoService.RegisterAccessAsync(id, usuarioId, accion);
-            return Ok(new { message = "Acceso registrado exitosamente" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en RegisterAccess elemento ID: {Id}, acción: {Accion}", id, accion);
-            return StatusCode(500, new { message = "Error interno del servidor" });
-        }
-    }
-
-    // 🛠️ MÉTODOS AUXILIARES
-
-    /// <summary>
-    /// Obtiene el ID del usuario actual desde el token JWT
-    /// </summary>
-    private int GetCurrentUserId()
-    {
+        usuarioId = 0;
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (int.TryParse(userIdClaim, out int userId))
-        {
-            return userId;
-        }
-        
-        // Si no se puede obtener el ID del usuario, lanzar excepción
-        throw new UnauthorizedAccessException("No se pudo obtener el ID del usuario actual");
-    }
-
-    /// <summary>
-    /// Obtiene el rol del usuario actual
-    /// </summary>
-    private string GetCurrentUserRole()
-    {
-        return User.FindFirst(ClaimTypes.Role)?.Value ?? "Usuario";
-    }
-
-    /// <summary>
-    /// Verifica si el usuario actual es administrador
-    /// </summary>
-    private bool IsCurrentUserAdmin()
-    {
-        return User.IsInRole("Administrador");
-    }
-
-    /// <summary>
-    /// Verifica si el usuario actual puede editar elementos
-    /// </summary>
-    private bool CanCurrentUserEdit()
-    {
-        return User.IsInRole("Administrador") || User.IsInRole("Geologo");
+        return int.TryParse(userIdClaim, out usuarioId);
     }
 }

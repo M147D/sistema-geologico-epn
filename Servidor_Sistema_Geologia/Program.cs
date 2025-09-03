@@ -58,6 +58,11 @@ builder.Services.AddScoped<IPaisRepository, PaisRepository>();
 builder.Services.AddScoped<IProvinciaRepository, ProvinciaRepository>();
 builder.Services.AddScoped<IElementoGeologicoRepository, ElementoGeologicoRepository>();
 
+// Registrar Repositorios específicos de Elementos Geológicos
+builder.Services.AddScoped<IFosilRepository, FosilRepository>();
+builder.Services.AddScoped<IMineralRepository, MineralRepository>();
+builder.Services.AddScoped<IRocaRepository, RocaRepository>();
+
 // Registrar Servicios
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -65,6 +70,11 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPaisService, PaisService>();
 builder.Services.AddScoped<IProvinciaService, ProvinciaService>();
 builder.Services.AddScoped<IElementoGeologicoService, ElementoGeologicoService>();
+
+// Registrar Servicios específicos de Elementos Geológicos
+builder.Services.AddScoped<IFosilService, FosilService>();
+builder.Services.AddScoped<IMineralService, MineralService>();
+builder.Services.AddScoped<IRocaService, RocaService>();
 
 // ========================================
 // CONFIGURACIÓN DE JWT AUTHENTICATION
@@ -122,14 +132,19 @@ builder.Services.AddAuthentication(options =>
         {
             Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
             context.HandleResponse();
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+            
+            if (!context.Response.HasStarted)
             {
-                success = false,
-                message = "Se requiere autenticación",
-                loginRequired = true
-            }));
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    message = "Se requiere autenticación",
+                    loginRequired = true
+                }));
+            }
+            return Task.CompletedTask;
         },
         OnForbidden = context =>
         {
@@ -205,6 +220,93 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// ========================================
+// CREAR USUARIO SUPER ADMIN POR DEFECTO
+// ========================================
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var userManager = services.GetRequiredService<UserManager<Servidor_Sistema_Geologia.Usuario>>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var logger = services.GetRequiredService<ILogger<Program>>();
+
+        // Crear roles si no existen
+        var roles = new[] { "Admin", "Premium", "Free" };
+        foreach (var role in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole<int>(role));
+                logger.LogInformation("✅ Rol '{Role}' creado exitosamente", role);
+            }
+        }
+
+        // Obtener configuración del super admin
+        var adminEmail = configuration["DefaultSuperAdmin:Email"] ?? "admin@sistemageologico.com";
+        var adminUserName = configuration["DefaultSuperAdmin:UserName"] ?? "superadmin";
+        var adminPassword = configuration["DefaultSuperAdmin:Password"] ?? "Admin123!";
+        var adminNombreCompleto = configuration["DefaultSuperAdmin:NombreCompleto"] ?? "Super Administrador";
+
+        // Verificar si el super admin ya existe
+        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+        if (existingAdmin == null)
+        {
+            // Crear el usuario super admin
+            var superAdmin = new Servidor_Sistema_Geologia.Usuario
+            {
+                UserName = adminUserName,
+                Email = adminEmail,
+                NombreCompleto = adminNombreCompleto,
+                EmailConfirmed = true,
+                Rol = Servidor_Sistema_Geologia.RolUsuario.Admin,
+                FechaCreacion = DateTime.Now,
+                EstadoActivo = true
+            };
+
+            var createResult = await userManager.CreateAsync(superAdmin, adminPassword);
+            if (createResult.Succeeded)
+            {
+                // Asignar rol de Admin
+                await userManager.AddToRoleAsync(superAdmin, "Admin");
+                
+                logger.LogInformation("🚀 Super Administrador creado exitosamente:");
+                logger.LogInformation("   📧 Email: {Email}", adminEmail);
+                logger.LogInformation("   👤 Usuario: {UserName}", adminUserName);
+                logger.LogInformation("   🔑 Contraseña: {Password}", adminPassword);
+                logger.LogInformation("   🎯 Rol: Admin");
+            }
+            else
+            {
+                logger.LogError("❌ Error al crear Super Administrador:");
+                foreach (var error in createResult.Errors)
+                {
+                    logger.LogError("   - {Description}", error.Description);
+                }
+            }
+        }
+        else
+        {
+            logger.LogInformation("ℹ️ El Super Administrador ya existe: {Email}", adminEmail);
+            
+            // Verificar que tenga el rol de Admin
+            if (!await userManager.IsInRoleAsync(existingAdmin, "Admin"))
+            {
+                await userManager.AddToRoleAsync(existingAdmin, "Admin");
+                logger.LogInformation("✅ Rol Admin asignado al usuario existente: {Email}", adminEmail);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "❌ Error al crear el Super Administrador por defecto");
+    }
+}
+
 // Configurar el pipeline de solicitudes HTTP
 if (app.Environment.IsDevelopment())
 {
@@ -254,10 +356,14 @@ Console.WriteLine("   🔐 POST /api/auth/login - Login (devuelve JWT)");
 Console.WriteLine("   👥 GET /api/users - Listar usuarios (requiere token)");
 Console.WriteLine("   🌎 GET /api/paises - Listar países");
 Console.WriteLine("   🏞️ GET /api/provincias - Listar provincias");
-Console.WriteLine("   🪨 GET /api/elementosgeologicos - Listar elementos geológicos");
-Console.WriteLine("   🦕 GET /api/elementosgeologicos/fosiles - Listar fósiles");
-Console.WriteLine("   💎 GET /api/elementosgeologicos/minerales - Listar minerales");
-Console.WriteLine("   🪨 GET /api/elementosgeologicos/rocas - Listar rocas");
+Console.WriteLine("   🗿 GET /api/elementos-geologicos - Listar todos los elementos geológicos");
+Console.WriteLine("   🗿 GET /api/elementos-geologicos?tipo=Fosil - Filtrar por tipo");
+Console.WriteLine("   🦕 GET /api/elementos-geologicos/fosiles - Listar fósiles");
+Console.WriteLine("   💎 GET /api/elementos-geologicos/minerales - Listar minerales");
+Console.WriteLine("   🪨 GET /api/elementos-geologicos/rocas - Listar rocas");
+Console.WriteLine("   ➕ POST /api/elementos-geologicos/fosiles - Crear fósil");
+Console.WriteLine("   ➕ POST /api/elementos-geologicos/minerales - Crear mineral");
+Console.WriteLine("   ➕ POST /api/elementos-geologicos/rocas - Crear roca");
 Console.WriteLine("   📖 /swagger - Documentación API");
 
 app.Run();

@@ -3,19 +3,29 @@ using Servidor_Sistema_Geologia.DTO.Ubicaciones;
 using Servidor_Sistema_Geologia.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Servidor_Sistema_Geologia.Services.Implementation;
 
 public class ElementoGeologicoService : IElementoGeologicoService
 {
     private readonly IElementoGeologicoRepository _elementoRepository;
+    private readonly IPaisRepository _paisRepository;
+    private readonly IProvinciaRepository _provinciaRepository;
+    private readonly GestorSistemaGeologia _context;
     private readonly ILogger<ElementoGeologicoService> _logger;
 
     public ElementoGeologicoService(
         IElementoGeologicoRepository elementoRepository,
+        IPaisRepository paisRepository,
+        IProvinciaRepository provinciaRepository,
+        GestorSistemaGeologia context,
         ILogger<ElementoGeologicoService> logger)
     {
         _elementoRepository = elementoRepository;
+        _paisRepository = paisRepository;
+        _provinciaRepository = provinciaRepository;
+        _context = context;
         _logger = logger;
     }
 
@@ -387,6 +397,90 @@ public class ElementoGeologicoService : IElementoGeologicoService
         }
     }
 
+    // 🏢 HELPER METHODS - UBICACION MANAGEMENT
+    private async Task<int> ResolveUbicacionIdAsync(CreateElementoGeologicoBaseDto createDto)
+    {
+        // Si se proporciona UbicacionId directamente, usarlo
+        if (createDto.UbicacionId.HasValue && createDto.UbicacionId.Value > 0)
+        {
+            return createDto.UbicacionId.Value;
+        }
+
+        // Si se proporcionan datos de ubicación inline, crear/buscar la ubicación
+        if (!string.IsNullOrEmpty(createDto.Latitud) && !string.IsNullOrEmpty(createDto.Longitud) && 
+            !string.IsNullOrEmpty(createDto.Localidad) && !string.IsNullOrEmpty(createDto.NombrePais))
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Buscar o crear país directamente en el contexto
+                var pais = await _context.Paises
+                    .FirstOrDefaultAsync(p => p.NombrePais.ToLower() == createDto.NombrePais.ToLower());
+                
+                if (pais == null)
+                {
+                    pais = new Pais 
+                    { 
+                        NombrePais = createDto.NombrePais,
+                        EstadoActivo = true,
+                        FechaCreacion = DateTime.Now
+                    };
+                    _context.Paises.Add(pais);
+                    await _context.SaveChangesAsync(); // Commit para obtener el ID
+                }
+
+                // Buscar o crear provincia
+                Provincia? provincia = null;
+                if (!string.IsNullOrEmpty(createDto.NombreProvincia))
+                {
+                    provincia = await _context.Provincias
+                        .FirstOrDefaultAsync(p => p.NombreProvincia.ToLower() == createDto.NombreProvincia.ToLower() 
+                                                  && p.PaisId == pais.Id);
+                    
+                    if (provincia == null)
+                    {
+                        provincia = new Provincia 
+                        { 
+                            NombreProvincia = createDto.NombreProvincia,
+                            PaisId = pais.Id,
+                            EstadoActivo = true,
+                            FechaCreacion = DateTime.Now
+                        };
+                        _context.Provincias.Add(provincia);
+                        await _context.SaveChangesAsync(); // Commit para obtener el ID
+                    }
+                }
+
+                // Crear ubicación
+                var nuevaUbicacion = new Ubicacion
+                {
+                    Latitud = createDto.Latitud,
+                    Longitud = createDto.Longitud,
+                    Localidad = createDto.Localidad,
+                    Leyenda = createDto.Leyenda,
+                    PaisId = pais.Id,
+                    ProvinciaId = provincia?.Id,
+                    EstadoActivo = true,
+                    FechaCreacion = DateTime.Now
+                };
+                
+                _context.Ubicaciones.Add(nuevaUbicacion);
+                await _context.SaveChangesAsync(); // Commit para obtener el ID
+
+                await transaction.CommitAsync();
+                return nuevaUbicacion.Id;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error creando ubicación inline: {Error}", ex.Message);
+                throw;
+            }
+        }
+
+        throw new ArgumentException("Debe proporcionar UbicacionId o datos completos de ubicación (Latitud, Longitud, Localidad, NombrePais)");
+    }
+
     // ✏️ OPERACIONES CRUD - FÓSILES
     public async Task<ElementoGeologicoResponseDto> CreateFosilAsync(CreateFosilDto createDto)
     {
@@ -403,6 +497,9 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 };
             }
 
+            // Resolver UbicacionId (por ID directo o creación inline)
+            var ubicacionId = await ResolveUbicacionIdAsync(createDto);
+
             var fosil = new Fosil
             {
                 Nombre = createDto.Nombre,
@@ -413,7 +510,7 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 Ejemplares = createDto.Ejemplares,
                 DocumentosRelacionados = createDto.DocumentosRelacionados,
                 LaminaExiste = createDto.LaminaExiste,
-                UbicacionId = createDto.UbicacionId ?? throw new ArgumentNullException(nameof(createDto.UbicacionId), "UbicacionId no puede ser nulo"),
+                UbicacionId = ubicacionId,
                 TipoFosil = createDto.TipoFosil,
                 Especie = createDto.Especie,
                 Periodo = createDto.Periodo
@@ -533,6 +630,9 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 };
             }
 
+            // Resolver UbicacionId (por ID directo o creación inline)
+            var ubicacionId = await ResolveUbicacionIdAsync(createDto);
+
             var mineral = new Mineral
             {
                 Nombre = createDto.Nombre,
@@ -543,7 +643,7 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 Ejemplares = createDto.Ejemplares,
                 DocumentosRelacionados = createDto.DocumentosRelacionados,
                 LaminaExiste = createDto.LaminaExiste,
-                UbicacionId = createDto.UbicacionId ?? throw new ArgumentNullException(nameof(createDto.UbicacionId), "UbicacionId no puede ser nulo"),
+                UbicacionId = ubicacionId,
                 TipoMineral = createDto.TipoMineral,
                 Litologia = createDto.Litologia
             };
@@ -661,6 +761,9 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 };
             }
 
+            // Resolver UbicacionId (por ID directo o creación inline)
+            var ubicacionId = await ResolveUbicacionIdAsync(createDto);
+
             var roca = new Roca
             {
                 Nombre = createDto.Nombre,
@@ -671,7 +774,7 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 Ejemplares = createDto.Ejemplares,
                 DocumentosRelacionados = createDto.DocumentosRelacionados,
                 LaminaExiste = createDto.LaminaExiste,
-                UbicacionId = createDto.UbicacionId ?? throw new ArgumentNullException(nameof(createDto.UbicacionId), "UbicacionId no puede ser nulo"),
+                UbicacionId = ubicacionId,
                 TipoRoca = createDto.TipoRoca,
                 Litologia = createDto.Litologia
             };
@@ -1281,5 +1384,54 @@ public class ElementoGeologicoService : IElementoGeologicoService
         }
 
         return dto;
+    }
+
+    // 🆔 MÉTODOS BY ID ESPECÍFICOS 
+    public async Task<ElementoGeologicoResponseDto> GetFosilByIdAsync(int id)
+    {
+        return await GetByIdAsync(id, 0); // Usuario 0 para calls internos
+    }
+
+    public async Task<ElementoGeologicoResponseDto> GetMineralByIdAsync(int id)
+    {
+        return await GetByIdAsync(id, 0); // Usuario 0 para calls internos
+    }
+
+    public async Task<ElementoGeologicoResponseDto> GetRocaByIdAsync(int id)
+    {
+        return await GetByIdAsync(id, 0); // Usuario 0 para calls internos
+    }
+
+    public async Task<ElementoGeologicoResponseDto> DeleteElementoAsync(int id)
+    {
+        try
+        {
+            var deleted = await _elementoRepository.DeleteAsync(id);
+            if (!deleted)
+            {
+                return new ElementoGeologicoResponseDto
+                {
+                    Success = false,
+                    Message = "Elemento geológico no encontrado",
+                    Errors = new List<string> { $"No se encontró un elemento con ID: {id}" }
+                };
+            }
+
+            return new ElementoGeologicoResponseDto
+            {
+                Success = true,
+                Message = "Elemento geológico eliminado exitosamente"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al eliminar elemento geológico con ID: {Id}", id);
+            return new ElementoGeologicoResponseDto
+            {
+                Success = false,
+                Message = "Error interno del servidor",
+                Errors = new List<string> { "Ha ocurrido un error inesperado" }
+            };
+        }
     }
 }

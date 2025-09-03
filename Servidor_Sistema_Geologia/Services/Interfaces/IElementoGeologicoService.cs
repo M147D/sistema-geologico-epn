@@ -23,18 +23,22 @@ public interface IElementoGeologicoService
     
     // ✏️ OPERACIONES CRUD - FÓSILES
     Task<ElementoGeologicoResponseDto> CreateFosilAsync(CreateFosilDto createDto);
+    Task<ElementoGeologicoResponseDto> GetFosilByIdAsync(int id);
     Task<ElementoGeologicoResponseDto> UpdateFosilAsync(int id, UpdateFosilDto updateDto);
     
     // ✏️ OPERACIONES CRUD - MINERALES
     Task<ElementoGeologicoResponseDto> CreateMineralAsync(CreateMineralDto createDto);
+    Task<ElementoGeologicoResponseDto> GetMineralByIdAsync(int id);
     Task<ElementoGeologicoResponseDto> UpdateMineralAsync(int id, UpdateMineralDto updateDto);
     
     // ✏️ OPERACIONES CRUD - ROCAS
     Task<ElementoGeologicoResponseDto> CreateRocaAsync(CreateRocaDto createDto);
+    Task<ElementoGeologicoResponseDto> GetRocaByIdAsync(int id);
     Task<ElementoGeologicoResponseDto> UpdateRocaAsync(int id, UpdateRocaDto updateDto);
     
     // ✏️ OPERACIONES COMUNES
     Task<ElementoGeologicoResponseDto> DeleteAsync(int id, int usuarioId); // Soft delete
+    Task<ElementoGeologicoResponseDto> DeleteElementoAsync(int id); // Soft delete (for controllers)
     Task<ElementoGeologicoResponseDto> RestoreAsync(int id, int usuarioId); // Restaurar
     
     // ✅ VALIDACIONES

@@ -40,6 +40,9 @@ public interface IElementoGeologicoRepository
     Task<Mineral> UpdateMineralAsync(Mineral mineral);
     Task<Roca> UpdateRocaAsync(Roca roca);
     
+    // 🏢 OPERACIONES CON UBICACIONES
+    Task<Ubicacion> CreateUbicacionAsync(Ubicacion ubicacion);
+    
     // ✅ VALIDACIONES
     Task<bool> ExistsAsync(int id);
     Task<bool> ExistsByCodigoAsync(string codigo, int? excludeId = null);
