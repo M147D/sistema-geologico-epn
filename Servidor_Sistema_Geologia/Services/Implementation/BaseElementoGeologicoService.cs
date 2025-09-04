@@ -1,6 +1,7 @@
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Servidor_Sistema_Geologia.Services.Implementation;
 
@@ -19,14 +20,17 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 {
     protected readonly IBaseElementoGeologicoRepository<T> _repository;
     protected readonly ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> _logger;
+    protected readonly GestorSistemaGeologia _context;
     protected abstract string ElementTypeName { get; }
 
     protected BaseElementoGeologicoService(
         IBaseElementoGeologicoRepository<T> repository,
-        ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> logger)
+        ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> logger,
+        GestorSistemaGeologia context)
     {
         _repository = repository;
         _logger = logger;
+        _context = context;
     }
 
     // 🔍 CONSULTAS BASICAS
@@ -288,5 +292,152 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 
         public static ValidationResult Success() => new() { IsValid = true };
         public static ValidationResult Error(string message) => new() { IsValid = false, ErrorMessage = message };
+    }
+
+    // 🌍 HELPER METHODS FOR LOCATION MANAGEMENT (adapted from Iteration1)
+    protected virtual async Task<Pais?> ObtenerOCrearPaisAsync(string? nombrePais)
+    {
+        if (string.IsNullOrWhiteSpace(nombrePais))
+            return null;
+
+        // First try to find existing país
+        var pais = await _context.Paises
+            .FirstOrDefaultAsync(p => p.NombrePais == nombrePais && p.EstadoActivo);
+
+        if (pais == null)
+        {
+            // Create new país with explicit transaction handling
+            pais = new Pais 
+            { 
+                NombrePais = nombrePais,
+                EstadoActivo = true,
+                FechaCreacion = DateTime.Now
+            };
+            
+            // Add and save immediately to get the ID
+            _context.Paises.Add(pais);
+            await _context.SaveChangesAsync();
+            
+            // Ensure entity is tracked properly
+            _context.Entry(pais).Reload();
+            
+            _logger.LogInformation("Creado nuevo país: {NombrePais} con ID: {Id}", nombrePais, pais.Id);
+        }
+
+        return pais;
+    }
+
+    protected virtual async Task<Provincia?> ObtenerOCrearProvinciaAsync(string? nombreProvincia, int? paisId)
+    {
+        if (string.IsNullOrWhiteSpace(nombreProvincia) || !paisId.HasValue)
+            return null;
+
+        try
+        {
+            // Ensure the País exists in the database before creating Provincia
+            var paisExists = await _context.Paises.AnyAsync(p => p.Id == paisId.Value && p.EstadoActivo);
+            if (!paisExists)
+            {
+                _logger.LogWarning("País con ID {PaisId} no encontrado para crear provincia {NombreProvincia}", paisId, nombreProvincia);
+                return null;
+            }
+
+            var provincia = await _context.Provincias
+                .FirstOrDefaultAsync(p => p.NombreProvincia == nombreProvincia && 
+                                        p.PaisId == paisId.Value && 
+                                        p.EstadoActivo);
+
+            if (provincia == null)
+            {
+                provincia = new Provincia
+                {
+                    NombreProvincia = nombreProvincia,
+                    PaisId = paisId.Value,
+                    EstadoActivo = true,
+                    FechaCreacion = DateTime.Now
+                };
+                await _context.Provincias.AddAsync(provincia);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Creada nueva provincia: {NombreProvincia} para país ID: {PaisId}", nombreProvincia, paisId);
+            }
+
+            return provincia;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al crear provincia {NombreProvincia} para país ID: {PaisId}", nombreProvincia, paisId);
+            return null; // Return null instead of throwing to prevent breaking the main operation
+        }
+    }
+
+    protected virtual async Task<Ubicacion> CrearUbicacionAsync(TCreateDto createDto, int? paisId = null, int? provinciaId = null)
+    {
+        try
+        {
+            // Create location with basic data - foreign keys will be set if valid
+            var ubicacion = new Ubicacion
+            {
+                Latitud = ObtenerValorUbicacion(createDto, "Latitud") ?? "0.0",
+                Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
+                Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
+                Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
+                PaisId = paisId,
+                ProvinciaId = provinciaId,
+                EstadoActivo = true,
+                FechaCreacion = DateTime.Now
+            };
+
+            await _context.Ubicaciones.AddAsync(ubicacion);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Creada nueva ubicación: {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}", 
+                ubicacion.Localidad, paisId, provinciaId);
+
+            return ubicacion;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al crear ubicación para {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}", 
+                ObtenerValorUbicacion(createDto, "Localidad"), paisId, provinciaId);
+            
+            // Create location without foreign keys as fallback
+            var ubicacionFallback = new Ubicacion
+            {
+                Latitud = ObtenerValorUbicacion(createDto, "Latitud") ?? "0.0",
+                Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
+                Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
+                Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
+                PaisId = null,
+                ProvinciaId = null,
+                EstadoActivo = true,
+                FechaCreacion = DateTime.Now
+            };
+
+            await _context.Ubicaciones.AddAsync(ubicacionFallback);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Creada ubicación de respaldo sin relaciones geográficas: {Localidad}", ubicacionFallback.Localidad);
+
+            return ubicacionFallback;
+        }
+    }
+
+    protected virtual async Task<Galeria.GaleriaElementoGeologico> CrearGaleriaAsync(string nombreElemento)
+    {
+        var galeria = new Galeria.GaleriaElementoGeologico
+        {
+            DetalleGrupo = $"Galería de {nombreElemento}"
+        };
+
+        await _context.GaleriaElementosGeologicos.AddAsync(galeria);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Creada nueva galería para elemento: {NombreElemento}", nombreElemento);
+
+        return galeria;
+    }
+
+    // Helper method to get location values from DTO using reflection
+    private string? ObtenerValorUbicacion(TCreateDto dto, string propertyName)
+    {
+        var property = typeof(TCreateDto).GetProperty(propertyName);
+        return property?.GetValue(dto)?.ToString();
     }
 }

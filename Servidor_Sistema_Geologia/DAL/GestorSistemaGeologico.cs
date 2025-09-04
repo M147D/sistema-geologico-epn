@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Servidor_Sistema_Geologia.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Galeria;
 
 namespace Servidor_Sistema_Geologia;

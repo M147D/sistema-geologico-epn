@@ -1,6 +1,6 @@
+using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.DTO.Ubicaciones;
-using Servidor_Sistema_Geologia.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
