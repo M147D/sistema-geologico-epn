@@ -48,6 +48,15 @@ public class ElementosGeologicosController : ControllerBase
             }
 
             var filter = new ElementoGeologicoFilterDto();
+            
+            // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
+            // Administradores: Pueden ver elementos inactivos para auditoría
+            // Premium/Free: Solo ven elementos activos
+            if (IsUserAdmin())
+            {
+                filter.IncludeInactive = true;
+                filter.EstadoActivo = null; // Ver todos independiente del estado
+            }
 
             var result = tipo?.ToLower() switch
             {
@@ -118,7 +127,16 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var result = await _fosilService.GetAllAsync(new ElementoGeologicoFilterDto());
+            var filter = new ElementoGeologicoFilterDto();
+            
+            // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
+            if (IsUserAdmin())
+            {
+                filter.IncludeInactive = true;
+                filter.EstadoActivo = null; // Ver todos independiente del estado
+            }
+
+            var result = await _fosilService.GetAllAsync(filter);
             return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
@@ -141,7 +159,16 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var result = await _mineralService.GetAllAsync(new ElementoGeologicoFilterDto());
+            var filter = new ElementoGeologicoFilterDto();
+            
+            // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
+            if (IsUserAdmin())
+            {
+                filter.IncludeInactive = true;
+                filter.EstadoActivo = null; // Ver todos independiente del estado
+            }
+
+            var result = await _mineralService.GetAllAsync(filter);
             return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
@@ -164,7 +191,16 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var result = await _rocaService.GetAllAsync(new ElementoGeologicoFilterDto());
+            var filter = new ElementoGeologicoFilterDto();
+            
+            // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
+            if (IsUserAdmin())
+            {
+                filter.IncludeInactive = true;
+                filter.EstadoActivo = null; // Ver todos independiente del estado
+            }
+
+            var result = await _rocaService.GetAllAsync(filter);
             return Ok(result.ElementosGeologicos);
         }
         catch (Exception ex)
@@ -413,5 +449,13 @@ public class ElementosGeologicosController : ControllerBase
         usuarioId = 0;
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return int.TryParse(userIdClaim, out usuarioId);
+    }
+
+    /// <summary>
+    /// Verifica si el usuario actual es administrador
+    /// </summary>
+    private bool IsUserAdmin()
+    {
+        return User.IsInRole("Admin");
     }
 }
