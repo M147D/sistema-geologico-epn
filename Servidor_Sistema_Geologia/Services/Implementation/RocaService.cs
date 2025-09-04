@@ -1,7 +1,7 @@
+using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
-using Servidor_Sistema_Geologia.ElementosGeologicos;
 
 namespace Servidor_Sistema_Geologia.Services.Implementation;
 
@@ -17,8 +17,9 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
     public RocaService(
         IRocaRepository repository,
         IElementoGeologicoRepository historialRepository,
-        ILogger<BaseElementoGeologicoService<Roca, CreateRocaDto, UpdateRocaDto>> logger)
-        : base(repository, logger)
+        ILogger<BaseElementoGeologicoService<Roca, CreateRocaDto, UpdateRocaDto>> logger,
+        GestorSistemaGeologia context)
+        : base(repository, logger, context)
     {
         _rocaRepository = repository;
         _historialRepository = historialRepository;
@@ -74,7 +75,37 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
 
     protected override async Task<Roca> MapCreateDtoToEntityAsync(CreateRocaDto createDto)
     {
-        var ubicacionId = createDto.UbicacionId ?? 1; // Default for now
+        // 🌍 Crear ubicación automáticamente si se proporcionan datos de ubicación
+        Ubicacion? ubicacion = null;
+        if (createDto.UbicacionId.HasValue)
+        {
+            // Usar ubicación existente
+            ubicacion = await _context.Ubicaciones.FindAsync(createDto.UbicacionId.Value);
+        }
+        else if (!string.IsNullOrWhiteSpace(createDto.Latitud) || !string.IsNullOrWhiteSpace(createDto.Longitud))
+        {
+            // Crear nueva ubicación automáticamente con manejo de transacciones
+            Pais? pais = null;
+            Provincia? provincia = null;
+            
+            // Step 1: Create or get País first
+            if (!string.IsNullOrWhiteSpace(createDto.NombrePais))
+            {
+                pais = await ObtenerOCrearPaisAsync(createDto.NombrePais);
+            }
+            
+            // Step 2: Create or get Provincia only if País exists
+            if (pais != null && !string.IsNullOrWhiteSpace(createDto.NombreProvincia))
+            {
+                provincia = await ObtenerOCrearProvinciaAsync(createDto.NombreProvincia, pais.Id);
+            }
+            
+            // Step 3: Create Ubicación with the IDs we have
+            ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
+        }
+
+        // 🖼️ Crear galería automáticamente
+        var galeria = await CrearGaleriaAsync(createDto.Nombre);
         
         return new Roca
         {
@@ -86,17 +117,16 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
             Ejemplares = createDto.Ejemplares,
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
-            UbicacionId = ubicacionId,
+            UbicacionId = ubicacion?.Id ?? 1, // Default if no location
+            GaleriaElementosGeologicoId = galeria.Id,
             
             // Rock-specific properties
             TipoRoca = createDto.TipoRoca,
             Litologia = createDto.Litologia,
             
-            // Gallery initialization
-            Galeria = new Galeria.GaleriaElementoGeologico 
-            { 
-                DetalleGrupo = "Ninguna" 
-            }
+            // Set timestamps
+            FechaCreacion = DateTime.Now,
+            EstadoActivo = true
         };
     }
 

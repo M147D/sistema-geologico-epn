@@ -76,6 +76,10 @@ builder.Services.AddScoped<IFosilService, FosilService>();
 builder.Services.AddScoped<IMineralService, MineralService>();
 builder.Services.AddScoped<IRocaService, RocaService>();
 
+// Registrar Repositorios y Servicios de Fotos
+builder.Services.AddScoped<IFotoElementoRepository, FotoElementoRepository>();
+builder.Services.AddScoped<IFotoElementoService, FotoElementoService>();
+
 // ========================================
 // CONFIGURACIÓN DE JWT AUTHENTICATION
 // ========================================

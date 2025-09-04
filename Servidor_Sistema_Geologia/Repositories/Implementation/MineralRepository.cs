@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
-using Servidor_Sistema_Geologia.ElementosGeologicos;
 using System.Linq.Expressions;
 
 namespace Servidor_Sistema_Geologia.Repositories.Implementation;

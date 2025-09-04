@@ -1,5 +1,4 @@
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
-using Servidor_Sistema_Geologia.ElementosGeologicos;
 
 namespace Servidor_Sistema_Geologia.Repositories.Interfaces;
 
