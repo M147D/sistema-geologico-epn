@@ -369,3 +369,6 @@ run-project.ps1
 *.sh
 *.md
 *.json
+*.xlsx
+*.csv
+.claude/
