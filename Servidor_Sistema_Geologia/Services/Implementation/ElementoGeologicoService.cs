@@ -1356,9 +1356,12 @@ public class ElementoGeologicoService : IElementoGeologicoService
             FechaActualizacion = elemento.FechaActualizacion,
             
             // Información de ubicación
+            UbicacionId = elemento.UbicacionId,
             Localidad = elemento.Ubicacion?.Localidad,
             NombrePais = elemento.Ubicacion?.Pais?.NombrePais,
             NombreProvincia = elemento.Ubicacion?.Provincia?.NombreProvincia,
+            Latitud = elemento.Ubicacion?.Latitud,
+            Longitud = elemento.Ubicacion?.Longitud,
             
             // Información de galería
             TotalFotos = elemento.Galeria?.Fotos?.Count ?? 0,

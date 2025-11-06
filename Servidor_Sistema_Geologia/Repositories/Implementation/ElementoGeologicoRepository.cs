@@ -247,6 +247,8 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
                 Localidad = e.Ubicacion != null ? e.Ubicacion.Localidad : null,
                 NombrePais = e.Ubicacion != null && e.Ubicacion.Pais != null ? e.Ubicacion.Pais.NombrePais : null,
                 NombreProvincia = e.Ubicacion != null && e.Ubicacion.Provincia != null ? e.Ubicacion.Provincia.NombreProvincia : null,
+                Latitud = e.Ubicacion != null ? e.Ubicacion.Latitud : null,
+                Longitud = e.Ubicacion != null ? e.Ubicacion.Longitud : null,
                 
                 // Información específica por tipo
                 TipoEspecifico = e is Fosil ? ((Fosil)e).TipoFosil.ToString() :

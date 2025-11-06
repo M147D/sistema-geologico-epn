@@ -100,9 +100,12 @@ public class FosilRepository : BaseElementoGeologicoRepository<Fosil>, IFosilRep
             FechaActualizacion = fosil.FechaActualizacion,
             
             // Ubicacion info
+            UbicacionId = fosil.UbicacionId,
             Localidad = fosil.Ubicacion?.Localidad,
             NombrePais = fosil.Ubicacion?.Pais?.NombrePais,
             NombreProvincia = fosil.Ubicacion?.Provincia?.NombreProvincia,
+            Latitud = fosil.Ubicacion?.Latitud,
+            Longitud = fosil.Ubicacion?.Longitud,
             
             // Type-specific fields
             TipoEspecifico = fosil.TipoFosil.ToString(),
