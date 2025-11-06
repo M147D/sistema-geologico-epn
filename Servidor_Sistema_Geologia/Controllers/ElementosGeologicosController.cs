@@ -47,7 +47,10 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var filter = new ElementoGeologicoFilterDto();
+            var filter = new ElementoGeologicoFilterDto
+            {
+                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+            };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
             // Administradores: Pueden ver elementos inactivos para auditoría
@@ -127,7 +130,10 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var filter = new ElementoGeologicoFilterDto();
+            var filter = new ElementoGeologicoFilterDto
+            {
+                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+            };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
             if (IsUserAdmin())
@@ -159,7 +165,10 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var filter = new ElementoGeologicoFilterDto();
+            var filter = new ElementoGeologicoFilterDto
+            {
+                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+            };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
             if (IsUserAdmin())
@@ -191,7 +200,10 @@ public class ElementosGeologicosController : ControllerBase
                 return Unauthorized("Usuario no autenticado");
             }
 
-            var filter = new ElementoGeologicoFilterDto();
+            var filter = new ElementoGeologicoFilterDto
+            {
+                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+            };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
             if (IsUserAdmin())

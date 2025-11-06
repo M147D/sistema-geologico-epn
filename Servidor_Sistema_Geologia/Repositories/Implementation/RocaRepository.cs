@@ -92,9 +92,12 @@ public class RocaRepository : BaseElementoGeologicoRepository<Roca>, IRocaReposi
             FechaActualizacion = roca.FechaActualizacion,
             
             // Ubicacion info
+            UbicacionId = roca.UbicacionId,
             Localidad = roca.Ubicacion?.Localidad,
             NombrePais = roca.Ubicacion?.Pais?.NombrePais,
             NombreProvincia = roca.Ubicacion?.Provincia?.NombreProvincia,
+            Latitud = roca.Ubicacion?.Latitud,
+            Longitud = roca.Ubicacion?.Longitud,
             
             // Type-specific fields
             TipoEspecifico = roca.TipoRoca.ToString(),

@@ -92,9 +92,12 @@ public class MineralRepository : BaseElementoGeologicoRepository<Mineral>, IMine
             FechaActualizacion = mineral.FechaActualizacion,
             
             // Ubicacion info
+            UbicacionId = mineral.UbicacionId,
             Localidad = mineral.Ubicacion?.Localidad,
             NombrePais = mineral.Ubicacion?.Pais?.NombrePais,
             NombreProvincia = mineral.Ubicacion?.Provincia?.NombreProvincia,
+            Latitud = mineral.Ubicacion?.Latitud,
+            Longitud = mineral.Ubicacion?.Longitud,
             
             // Type-specific fields
             TipoEspecifico = mineral.TipoMineral.ToString(),
