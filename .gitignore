@@ -9,6 +9,8 @@
 *.user
 *.userosscache
 *.sln.docstates
+.claude
+bin
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -372,3 +374,12 @@ run-project.ps1
 *.xlsx
 *.csv
 .claude/
+
+# Allow specific frontend stub files for VITE_USE_STUBS feature
+!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/stubs/
+!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/hooks/useElementosService.js
+!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/hooks/useGeologiaGisService.js
+!Cliente_Sistema_Geologia/cliente-sistema-geologico/.env.example
+
+# Claude Code temp files
+tmpclaude-*
