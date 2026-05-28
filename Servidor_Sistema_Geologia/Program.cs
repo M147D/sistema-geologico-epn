@@ -7,6 +7,7 @@ using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Repositories.Implementation;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 using Servidor_Sistema_Geologia.Services.Implementation;
+using Servidor_Sistema_Geologia.DAL;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,8 +17,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 // Registra el DbContext con la cadena de conexion
-builder.Services.AddDbContext<Servidor_Sistema_Geologia.GestorSistemaGeologia>(options =>
+builder.Services.AddDbContext<Servidor_Sistema_Geologia.SistemaGeologicoDbContext>(options =>
 	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Registrar PostGIS Context para datos geoespaciales
+builder.Services.AddDbContext<PostGISDbContext>(options =>
+	options.UseNpgsql(
+		builder.Configuration.GetConnectionString("PostGISConnection"),
+		npgsqlOptions => npgsqlOptions.UseNetTopologySuite()
+	));
 
 // Configurar Identity
 builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int>>(options =>
@@ -32,7 +40,7 @@ builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int
 
 	// Configuración de Lockout
 	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-	options.Lockout.MaxFailedAccessAttempts = 5;
+	options.Lockout.MaxFailedAccessAttempts = 3;
 	options.Lockout.AllowedForNewUsers = true;
 
 	// Configuración de Usuario
@@ -44,7 +52,7 @@ builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int
 	options.SignIn.RequireConfirmedEmail = false;
 	options.SignIn.RequireConfirmedPhoneNumber = false;
 })
-.AddEntityFrameworkStores<Servidor_Sistema_Geologia.GestorSistemaGeologia>()
+.AddEntityFrameworkStores<Servidor_Sistema_Geologia.SistemaGeologicoDbContext>()
 .AddDefaultTokenProviders();
 
 // ========================================
@@ -79,6 +87,24 @@ builder.Services.AddScoped<IRocaService, RocaService>();
 // Registrar Repositorios y Servicios de Fotos
 builder.Services.AddScoped<IFotoElementoRepository, FotoElementoRepository>();
 builder.Services.AddScoped<IFotoElementoService, FotoElementoService>();
+
+// Registrar Repositorio GIS para datos geoespaciales
+builder.Services.AddScoped<IGeologiaGISRepository, GeologiaGISRepository>();
+
+// Registrar Servicio GIS
+builder.Services.AddScoped<IGeologiaGISService, GeologiaGISService>();
+
+// Registrar servicio de colores QML (Singleton para cargar una sola vez)
+builder.Services.AddSingleton<QmlColorService>();
+
+// Registrar servicio de Email (Singleton — no tiene estado por request)
+builder.Services.AddSingleton<IEmailService, EmailService>();
+
+// Caché en memoria para imágenes procesadas (thumbnails + watermarks)
+builder.Services.AddMemoryCache(options =>
+{
+	options.SizeLimit = 500 * 1024 * 1024; // 500 MB
+});
 
 // ========================================
 // CONFIGURACIÓN DE JWT AUTHENTICATION
@@ -205,7 +231,7 @@ builder.Services.AddCors(options =>
 	options.AddPolicy("AllowFrontend",
 		policy =>
 		{
-			policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // URLs del frontend
+			policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000") // URLs del frontend
 				  .AllowAnyHeader()
 				  .AllowAnyMethod()
 				  .AllowCredentials();
@@ -220,6 +246,9 @@ builder.Services.AddAuthorization(options =>
 
 	options.AddPolicy("RequireAuthenticated", policy =>
 		policy.RequireAuthenticatedUser());
+
+	options.AddPolicy("CanCreateEdit", policy =>
+		policy.RequireRole("Admin", "Invitado"));
 });
 
 var app = builder.Build();
@@ -239,7 +268,7 @@ using (var scope = app.Services.CreateScope())
         var logger = services.GetRequiredService<ILogger<Program>>();
 
         // Crear roles si no existen
-        var roles = new[] { "Admin", "Premium", "Free" };
+        var roles = new[] { "Admin", "Premium", "Free", "Invitado" };
         foreach (var role in roles)
         {
             if (!await roleManager.RoleExistsAsync(role))
@@ -314,14 +343,13 @@ using (var scope = app.Services.CreateScope())
 // Configurar el pipeline de solicitudes HTTP
 if (app.Environment.IsDevelopment())
 {
+	app.UseDeveloperExceptionPage();
 	app.UseSwagger();
 	app.UseSwaggerUI(c =>
 	{
 		c.SwaggerEndpoint("/swagger/v1/swagger.json", "Sistema Geologia API v1");
 		c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
 	});
-
-	app.UseDeveloperExceptionPage();
 }
 else
 {
@@ -330,26 +358,13 @@ else
 	app.UseHttpsRedirection();
 }
 
-// Aplicar CORS
 app.UseCors("AllowFrontend");
 
-// 🔥 ORDEN IMPORTANTE: Authentication ANTES de Authorization
+// UseRouting debe preceder a auth para que el endpoint matching ocurra
+// antes de que UseAuthorization evalúe las políticas [Authorize]
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Middleware de diagnóstico JWT
-app.Use(async (context, next) =>
-{
-	var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
-	var userEmail = context.User?.FindFirst("email")?.Value ?? "Anonymous";
-	var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-	
-	Console.WriteLine($"🔍 Request: {context.Request.Method} {context.Request.Path}");
-	Console.WriteLine($"   Auth: {isAuthenticated} | User: {userEmail}");
-	Console.WriteLine($"   Token: {(authHeader != null ? "Present" : "Missing")}");
-	
-	await next();
-});
 
 app.MapControllers();
 
@@ -368,6 +383,13 @@ Console.WriteLine("   🪨 GET /api/elementos-geologicos/rocas - Listar rocas");
 Console.WriteLine("   ➕ POST /api/elementos-geologicos/fosiles - Crear fósil");
 Console.WriteLine("   ➕ POST /api/elementos-geologicos/minerales - Crear mineral");
 Console.WriteLine("   ➕ POST /api/elementos-geologicos/rocas - Crear roca");
+Console.WriteLine("\n🗺️ Endpoints GIS (PostGIS):");
+Console.WriteLine("   🌍 GET /api/geologiagis/geologia - Formaciones geológicas (GeoJSON)");
+Console.WriteLine("   🏛️ GET /api/geologiagis/provincias - Provincias (GeoJSON)");
+Console.WriteLine("   🇪🇨 GET /api/geologiagis/ecuador - Contorno de Ecuador (GeoJSON)");
+Console.WriteLine("   📍 GET /api/geologiagis/geologia/point?lat=&lon= - Geología en punto");
+Console.WriteLine("   📊 GET /api/geologiagis/estadisticas - Estadísticas geológicas");
+Console.WriteLine("   ℹ️ GET /api/geologiagis/info - Información del servicio GIS");
 Console.WriteLine("   📖 /swagger - Documentación API");
 
 app.Run();
