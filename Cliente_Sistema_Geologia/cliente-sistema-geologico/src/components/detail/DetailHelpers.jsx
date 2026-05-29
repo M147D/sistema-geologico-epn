@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box } from '@mui/material';
+import { Box, TableRow, TableCell, Typography } from '@mui/material';
 import { useApi } from '../../context/ApiContext';
 import { getImage, getImageThumbnail } from '../../utils/imageCache';
 import { SUBTIPOS_FOSIL, SUBTIPOS_MINERAL, SUBTIPOS_ROCA } from '../../constants/tipoMaps';
@@ -89,3 +89,19 @@ export const FotoComponente = ({ fotoId, alt, height = "200px", onClick, thumbna
     />
   );
 };
+
+export const InfoRow = ({ label, value, isEditing, editField, labelWidth = '38%' }) => (
+  <TableRow sx={{ '&:nth-of-type(odd)': { bgcolor: 'grey.50' } }}>
+    <TableCell
+      component="th"
+      sx={{ fontWeight: 600, width: labelWidth, py: 1, color: 'text.secondary', fontSize: '0.8125rem' }}
+    >
+      {label}
+    </TableCell>
+    <TableCell sx={{ py: 1 }}>
+      {isEditing && editField
+        ? editField
+        : (value ?? <Typography variant="body2" color="text.disabled">No disponible</Typography>)}
+    </TableCell>
+  </TableRow>
+);
