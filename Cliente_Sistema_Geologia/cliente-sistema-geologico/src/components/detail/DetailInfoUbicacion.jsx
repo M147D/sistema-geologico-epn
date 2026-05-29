@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Grid
+  Box, Typography, Paper, Table, TableBody, TableContainer, TextField, Grid
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { InfoRow } from './DetailHelpers.jsx';

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableRow,
+  Box, Typography, Paper, Table, TableBody, TableContainer,
   TextField, FormControl, Select, MenuItem, Chip
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
