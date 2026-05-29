@@ -34,6 +34,7 @@ export function compressForUpload(file, quality = 0.80, maxWidth = 1920) {
       canvas.height = height;
 
       const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
