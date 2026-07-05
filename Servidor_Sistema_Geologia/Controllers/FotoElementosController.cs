@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Servidor_Sistema_Geologia.DTO.Gallery;
-using Servidor_Sistema_Geologia.Galeria;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -18,42 +16,16 @@ public class FotoElementosController : ControllerBase
 {
     private readonly IFotoElementoService _fotoService;
     private readonly ILogger<FotoElementosController> _logger;
-    private readonly SistemaGeologicoDbContext _context;
     private readonly IMemoryCache _cache;
 
     public FotoElementosController(
         IFotoElementoService fotoService,
         ILogger<FotoElementosController> logger,
-        SistemaGeologicoDbContext context,
         IMemoryCache cache)
     {
         _fotoService = fotoService;
         _logger = logger;
-        _context = context;
         _cache = cache;
-    }
-
-    /// <summary>
-    /// Obtiene todas las fotos
-    /// </summary>
-    [HttpGet]
-    [Authorize]
-    public async Task<ActionResult<IEnumerable<PhotoElementDto>>> GetFotos()
-    {
-        try
-        {
-            var fotos = await _fotoService.GetAllAsync();
-            return Ok(fotos);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound("No se encontraron fotos");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al obtener las fotos");
-            return BadRequest($"Error al obtener las fotos: {ex.Message}");
-        }
     }
 
     /// <summary>
@@ -267,27 +239,9 @@ public class FotoElementosController : ControllerBase
             if (!TryGetUsuarioId(out int usuarioId))
                 return Unauthorized("Usuario no autenticado");
 
-            var elemento = await _context.ElementosGeologicos
-                .Include(e => e.Galeria)
-                .FirstOrDefaultAsync(e => e.Id == elementoId && e.EstadoActivo);
-
-            if (elemento == null)
+            var galeriaId = await _fotoService.GetOrCreateGaleriaIdAsync(elementoId);
+            if (galeriaId == null)
                 return NotFound($"Elemento con ID {elementoId} no encontrado");
-
-            // Crear galería si no existe
-            if (elemento.Galeria == null)
-            {
-                var nuevaGaleria = new GaleriaElementoGeologico
-                {
-                    ElementoGeologicoId = elementoId,
-                    DetalleGrupo = "Galeria",
-                    FechaCreacion = DateTime.Now,
-                    EstadoActivo = true
-                };
-                _context.GaleriaElementosGeologicos.Add(nuevaGaleria);
-                await _context.SaveChangesAsync();
-                elemento.Galeria = nuevaGaleria;
-            }
 
             if (fotoDto.ImagenFile != null && fotoDto.ImagenFile.Length > 0)
             {
@@ -299,7 +253,7 @@ public class FotoElementosController : ControllerBase
             if (fotoDto.Imagen == null || fotoDto.Imagen.Length == 0)
                 return BadRequest("Se requiere una imagen");
 
-            var foto = await _fotoService.CreateAsync(fotoDto, elemento.Galeria.Id, usuarioId);
+            var foto = await _fotoService.CreateAsync(fotoDto, galeriaId.Value, usuarioId);
 
             var respuesta = new
             {
@@ -356,34 +310,11 @@ public class FotoElementosController : ControllerBase
     {
         try
         {
-            var elemento = await _context.ElementosGeologicos
-                .Include(e => e.Galeria)
-                    .ThenInclude(g => g!.Fotos)
-                .FirstOrDefaultAsync(e => e.Id == elementoId && e.EstadoActivo);
-
-            if (elemento == null)
+            var result = await _fotoService.GetFotosByElementoAsync(elementoId, IsUserAdmin());
+            if (result == null)
                 return NotFound($"Elemento con ID {elementoId} no encontrado");
 
-            if (elemento.Galeria == null)
-                return Ok(new { galeriaId = (int?)null, fotos = new List<object>() });
-
-            bool adminVista = IsUserAdmin();
-
-            var fotos = (elemento.Galeria.Fotos ?? new List<FotoElemento>())
-                .Where(f => adminVista || f.EstadoActivo)
-                .Select(f => new
-                {
-                    id = f.Id,
-                    galeriaElementosGeologicoId = f.GaleriaElementosGeologicoId,
-                    tipoFoto = f.TipoFoto,
-                    descripcionEspecifica = f.DescripcionEspecifica,
-                    fechaCreacion = f.FechaCreacion,
-                    fechaActualizacion = f.FechaActualizacion,
-                    estadoActivo = f.EstadoActivo,
-                    imagenUrl = $"/api/foto-elementos/imagen/{f.Id}"
-                }).ToList();
-
-            return Ok(new { galeriaId = (int?)elemento.Galeria.Id, fotos });
+            return Ok(result);
         }
         catch (Exception ex)
         {

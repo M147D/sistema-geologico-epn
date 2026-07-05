@@ -149,9 +149,7 @@ export const elementosStubs = {
   getPaises:            () => Promise.resolve([PAIS_ECUADOR]),
   getProvincias:        (paisId = 1) => Promise.resolve(paisId === 1 ? PROVINCIAS_STUB : []),
   getByCodigo:          () => Promise.resolve({ exists: false }),
-  getFotosGaleria:      () => Promise.resolve([]),
   getFotosByElemento:   () => Promise.resolve({ galeriaId: null, fotos: [] }),
-  uploadFoto:           () => Promise.resolve(STUB_OK),
   uploadFotoByElemento: () => Promise.resolve(STUB_OK),
   updateFoto:           () => Promise.resolve(STUB_OK),
   deleteFoto:           () => Promise.resolve(),
@@ -169,6 +167,13 @@ export const elementosStubs = {
     if (!el) return Promise.resolve({ success: false, message: 'Stub: no encontrado', data: null, errors: [] });
     return Promise.resolve({ success: true, message: 'OK', data: makeDetail(el), errors: [] });
   },
+
+  solicitarInforme(_id, _dto) {
+    return Promise.resolve({ success: true, message: 'Stub: solicitud de informe simulada' });
+  },
+
+  getImage: (_fotoId) => Promise.resolve(null),
+  getImageThumbnail: (_fotoId) => Promise.resolve(null),
 
   filtrarElementos(filtros = {}) {
     let result = TODOS;

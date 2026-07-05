@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from '@hookform/resolvers/yup';
 import { compressForUpload } from '../../utils/imageProcessor';
 import * as yup from 'yup';
-import { useElementos } from '../../context/ElementosContext';
-import { useAuth } from '../../context/AuthContext';
 import { Box, Divider } from "@mui/material";
 import BasicInfoSection from './BasicInfoSection';
 import LocationSection from './LocationSection';
@@ -60,9 +58,7 @@ const getValidationSchema = (tipo) => {
   return rocaSchema;
 };
 
-const FormElement = ({ tipo }) => {
-  const { crearElemento, loading, error: contextError } = useElementos();
-  const { user } = useAuth();
+const FormElement = ({ tipo, crearElemento, loading }) => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -105,7 +101,6 @@ const FormElement = ({ tipo }) => {
   };
 
   const prepareDataForAPI = async (data) => {
-    const usuarioId = user?.id || 1;
     const tipoFosilMap = { 'Desconocido': 0, 'Vertebrado': 1, 'Invertebrado': 2, 'Paleobotánica': 3, 'Icnofósil': 4, 'Microfósil': 5 };
     const tipoMineralMap = { 'Desconocido': 0, 'Silicato': 1, 'Carbonato': 2, 'Metálico': 3, 'Oxido': 4, 'Sulfuro': 5, 'Sulfato': 6, 'Fosfato': 7, 'Vanadato': 8 };
     const tipoRocaMap = { 'Desconocido': 0, 'Ígnea': 1, 'Sedimentaria': 2, 'Metamórfica': 3, 'Meteorito': 4, 'PiroVolcanoclástica': 5 };
@@ -167,21 +162,13 @@ const FormElement = ({ tipo }) => {
   const onSubmit = async (data) => {
     setError(null);
     try {
-      if (!data.nombre) throw new Error('Faltan campos requeridos');
-      if (!data.nombrePais || data.nombrePais.trim() === '') throw new Error('El país es obligatorio');
-
       const apiData = await prepareDataForAPI(data);
-      console.log('📤 Enviando elemento al backend:', JSON.stringify(apiData, null, 2));
-
-      const response = await crearElemento(apiData, tipo);
-      console.log('✅ Respuesta del servidor:', response);
-
+      await crearElemento(apiData, tipo);
       setSuccess(true);
       reset();
       setPreviewImage(null);
       setSelectedFile(null);
     } catch (error) {
-      console.error(`❌ Error al crear ${tipo}:`, error);
       setError(error.message || `Error al crear ${tipo}`);
     }
   };

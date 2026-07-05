@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { compressForUpload } from '../../utils/imageProcessor';
 import {
   Box, Typography, Paper, Stack, Button, IconButton, TextField,
@@ -25,8 +25,9 @@ const DetailGallery = ({
   onSavePhoto,
   onDeletePhoto,
   onRestorePhoto,
-  saveError,
-  onSetSaveError
+  onSetSaveError,
+  getImage,
+  getImageThumbnail,
 }) => {
   // Upload state
   const fileInputRef = useRef(null);
@@ -187,6 +188,8 @@ const DetailGallery = ({
                       fotoId={foto.id}
                       alt={`${elemento.nombre} - Foto ${index + 1}`}
                       thumbnail={true}
+                      getImage={getImage}
+                      getImageThumbnail={getImageThumbnail}
                       onClick={!isEditingThis && !isInactiva && activeIndex >= 0
                         ? () => onOpenModal(activeIndex)
                         : undefined}

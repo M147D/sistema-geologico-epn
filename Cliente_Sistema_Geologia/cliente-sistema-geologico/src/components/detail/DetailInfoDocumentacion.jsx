@@ -1,13 +1,11 @@
-import React from 'react';
 import {
   Box, Typography, Paper, TextField, Chip, Switch, FormControlLabel,
-  Table, TableBody, TableContainer, Button
+  Table, TableBody, TableContainer
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
-import ScienceIcon from '@mui/icons-material/Science';
 import { InfoRow } from './DetailHelpers.jsx';
 
-const DetailInfoDocumentacion = ({ elemento, isEditing, editForm, onEditChange, onSolicitarInforme }) => {
+const DetailInfoDocumentacion = ({ elemento, isEditing, editForm, onEditChange }) => {
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -64,27 +62,6 @@ const DetailInfoDocumentacion = ({ elemento, isEditing, editForm, onEditChange, 
           </TableBody>
         </Table>
       </TableContainer>
-
-      {onSolicitarInforme && (
-        <Button
-          variant="contained"
-          fullWidth
-          size="large"
-          startIcon={<ScienceIcon />}
-          onClick={onSolicitarInforme}
-          sx={{
-            mt: 1,
-            py: 1.5,
-            fontWeight: 700,
-            letterSpacing: 0.5,
-            bgcolor: 'secondary.dark',
-            '&:hover': { bgcolor: 'secondary.main' },
-            boxShadow: 3,
-          }}
-        >
-          Solicitar Informe Petrográfico
-        </Button>
-      )}
     </Box>
   );
 };

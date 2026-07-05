@@ -1,10 +1,10 @@
-import React from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableContainer,
   TextField, FormControl, Select, MenuItem, Chip
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
-import { getTypeColor, getTypeLabel, getSubtipos, getSubtipoLabel, InfoRow } from './DetailHelpers.jsx';
+import { getTypeColor, getTypeLabel, getSubtipos, getSubtipoLabel } from '../../utils/detailUtils.js';
+import { InfoRow } from './DetailHelpers.jsx';
 
 const DetailInfoGeneral = ({ elemento, isEditing, editForm, onEditChange }) => {
   const tipoElemento = elemento.tipoElemento;

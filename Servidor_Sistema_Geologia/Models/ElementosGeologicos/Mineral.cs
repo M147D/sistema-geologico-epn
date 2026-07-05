@@ -1,0 +1,14 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Servidor_Sistema_Geologia;
+
+public class Mineral : ElementoGeologico
+{
+	[EnumDataType(typeof(SubtipoMineral), ErrorMessage = "El tipo de mineral no es válido.")]
+	[Display(Name = "Tipo de Mineral")]
+	public SubtipoMineral TipoMineral { get; set; } = SubtipoMineral.Desconocido;
+	[MaxLength(500)]
+	[Display(Name = "Litologia")]
+	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "La litología solo puede contener letras y espacios.")]
+	public string Litologia { get; set; } = "Desconocida";
+}

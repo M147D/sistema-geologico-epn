@@ -63,9 +63,4 @@ public interface IElementoGeologicoRepository
     Task<List<ElementoGeologico>> GetElementosByDateRangeAsync(DateTime desde, DateTime hasta);
     Task<List<ElementoGeologico>> GetElementosByDonanteAsync(string donante);
     
-    // 🔄 HISTORIAL DE ACCESO
-    Task RegisterAccessAsync(int elementoId, int usuarioId, AccionesUsuario accion);
-    Task<List<HistorialAcceso>> GetHistorialAsync(int elementoId);
-    Task<HistorialAcceso?> GetLastVisualizacionAsync(int elementoId, int usuarioId);
-    Task UpdateOrCreateVisualizacionAsync(int elementoId, int usuarioId);
 }

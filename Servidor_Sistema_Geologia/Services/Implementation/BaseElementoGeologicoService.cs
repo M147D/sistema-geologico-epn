@@ -20,13 +20,13 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 {
     protected readonly IBaseElementoGeologicoRepository<T> _repository;
     protected readonly ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> _logger;
-    protected readonly GestorSistemaGeologia _context;
+    protected readonly SistemaGeologicoDbContext _context;
     protected abstract string ElementTypeName { get; }
 
     protected BaseElementoGeologicoService(
         IBaseElementoGeologicoRepository<T> repository,
         ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> logger,
-        GestorSistemaGeologia context)
+        SistemaGeologicoDbContext context)
     {
         _repository = repository;
         _logger = logger;
@@ -48,8 +48,8 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
                 };
             }
 
-            // Register access in history
-            await RegisterAccessAsync(elemento.Id, usuarioId, AccionesUsuario.Visualizacion);
+            // Register access in history - Ya no necesario con EntidadAuditable
+            // await RegisterAccessAsync(elemento.Id, usuarioId, AccionesUsuario.Visualizacion);
 
             var elementoDto = MapToDetailDto(elemento);
 
@@ -111,12 +111,27 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 
             // Map DTO to entity
             var elemento = await MapCreateDtoToEntityAsync(createDto);
+            elemento.UsuarioCreacionId = usuarioId;
 
-            // Create entity
+            // Create entity first (must exist before gallery FK)
             var createdElemento = await _repository.CreateAsync(elemento);
 
-            // Register creation in history
-            await RegisterAccessAsync(createdElemento.Id, usuarioId, AccionesUsuario.Creacion);
+            // Create gallery after element exists in DB
+            try
+            {
+                var galeria = new Galeria.GaleriaElementoGeologico
+                {
+                    ElementoGeologicoId = createdElemento.Id,
+                    DetalleGrupo = $"Galeria de {createdElemento.Nombre}"
+                };
+                await _context.GaleriaElementosGeologicos.AddAsync(galeria);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Creada galeria para elemento ID: {Id}", createdElemento.Id);
+            }
+            catch (Exception exGaleria)
+            {
+                _logger.LogWarning(exGaleria, "No se pudo crear galeria para elemento ID: {Id}", createdElemento.Id);
+            }
 
             var elementoDto = MapToDetailDto(createdElemento);
 
@@ -165,12 +180,13 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 
             // Map DTO to entity
             await MapUpdateDtoToEntityAsync(updateDto, elemento);
+            elemento.UsuarioActualizacionId = usuarioId;
 
             // Update entity
             var updatedElemento = await _repository.UpdateAsync(elemento);
 
             // Register update in history
-            await RegisterAccessAsync(updatedElemento.Id, usuarioId, AccionesUsuario.Edicion);
+            // await RegisterAccessAsync(updatedElemento.Id, usuarioId, AccionesUsuario.Edicion);
 
             var elementoDto = MapToDetailDto(updatedElemento);
 
@@ -203,15 +219,13 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
                 return false;
             }
 
-            var success = await _repository.DeleteAsync(id);
-            
-            if (success)
-            {
-                // Register deletion in history
-                await RegisterAccessAsync(id, usuarioId, AccionesUsuario.Eliminacion);
-            }
+            elemento.EstadoActivo = false;
+            elemento.FechaEliminacion = DateTime.Now;
+            elemento.UsuarioEliminacionId = usuarioId;
 
-            return success;
+            await _repository.UpdateAsync(elemento);
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -224,15 +238,22 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
     {
         try
         {
-            var success = await _repository.RestoreAsync(id);
-            
-            if (success)
+            var elemento = await _context.Set<T>().FirstOrDefaultAsync(e => e.Id == id);
+            if (elemento == null)
             {
-                // Register restoration in history
-                await RegisterAccessAsync(id, usuarioId, AccionesUsuario.Edicion);
+                _logger.LogWarning("{ElementType} con ID {Id} no encontrado para restauración", ElementTypeName, id);
+                return false;
             }
 
-            return success;
+            elemento.EstadoActivo = true;
+            elemento.FechaEliminacion = null;
+            elemento.UsuarioEliminacionId = null;
+            elemento.FechaActualizacion = DateTime.Now;
+            elemento.UsuarioActualizacionId = usuarioId;
+
+            await _context.SaveChangesAsync();
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -282,7 +303,6 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
     protected abstract Task<T> MapCreateDtoToEntityAsync(TCreateDto createDto);
     protected abstract Task MapUpdateDtoToEntityAsync(TUpdateDto updateDto, T elemento);
     protected abstract ElementoGeologicoDetailDto MapToDetailDto(T elemento);
-    protected abstract Task RegisterAccessAsync(int elementoId, int usuarioId, AccionesUsuario accion);
 
     // Helper class for validation results
     protected class ValidationResult
@@ -374,47 +394,48 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
     {
         try
         {
-            // Create location with basic data - foreign keys will be set if valid
+            // Create location with basic data and foreign keys
             var ubicacion = new Ubicacion
             {
                 Latitud = ObtenerValorUbicacion(createDto, "Latitud") ?? "0.0",
                 Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
                 Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
                 Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
-                PaisId = paisId,
-                ProvinciaId = provinciaId,
+                // Establecer ambas FK si están disponibles
+                PaisId = paisId ?? 1, // Valor por defecto: 1 (puede ser "Desconocido" si existe)
+                ProvinciaId = provinciaId ?? 1, // Valor por defecto: 1
                 EstadoActivo = true,
                 FechaCreacion = DateTime.Now
             };
 
             await _context.Ubicaciones.AddAsync(ubicacion);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Creada nueva ubicación: {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}", 
-                ubicacion.Localidad, paisId, provinciaId);
+            _logger.LogInformation("Creada nueva ubicación: {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}",
+                ubicacion.Localidad, ubicacion.PaisId, ubicacion.ProvinciaId);
 
             return ubicacion;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al crear ubicación para {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}", 
+            _logger.LogError(ex, "Error al crear ubicación para {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}",
                 ObtenerValorUbicacion(createDto, "Localidad"), paisId, provinciaId);
-            
-            // Create location without foreign keys as fallback
+
+            // Create location with default values as fallback
             var ubicacionFallback = new Ubicacion
             {
                 Latitud = ObtenerValorUbicacion(createDto, "Latitud") ?? "0.0",
                 Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
                 Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
                 Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
-                PaisId = null,
-                ProvinciaId = null,
+                PaisId = 1, // Valor por defecto
+                ProvinciaId = 1, // Valor por defecto
                 EstadoActivo = true,
                 FechaCreacion = DateTime.Now
             };
 
             await _context.Ubicaciones.AddAsync(ubicacionFallback);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Creada ubicación de respaldo sin relaciones geográficas: {Localidad}", ubicacionFallback.Localidad);
+            _logger.LogInformation("Creada ubicación de respaldo con valores por defecto: {Localidad}", ubicacionFallback.Localidad);
 
             return ubicacionFallback;
         }

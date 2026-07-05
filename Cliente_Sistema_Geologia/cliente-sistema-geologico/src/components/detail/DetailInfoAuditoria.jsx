@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Typography, Paper, Table, TableBody, TableContainer } from '@mui/material';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import { InfoRow } from './DetailHelpers.jsx';

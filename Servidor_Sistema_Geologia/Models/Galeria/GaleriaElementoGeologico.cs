@@ -2,11 +2,9 @@
 
 namespace Servidor_Sistema_Geologia.Galeria;
 
-public class GaleriaElementoGeologico
+public class GaleriaElementoGeologico : EntidadAuditable
 {
-	[Key]
-	public int Id { get; set; }
-	public int ElementoGeologicoId { get; set; } = 0;
+	public int ElementoGeologicoId { get; set; }
 	[MaxLength(200)]
 	[Display(Name = "Nombre del Grupo")]
 	[RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "El nombre del grupo solo puede contener letras y espacios.")]

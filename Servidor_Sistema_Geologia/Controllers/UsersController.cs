@@ -64,30 +64,6 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Obtiene un usuario por email
-    /// </summary>
-    [HttpGet("by-email/{email}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UserResponseDto>> GetUserByEmail(string email)
-    {
-        _logger.LogInformation("Solicitud de usuario por email: {Email}", email);
-
-        var resultado = await _userService.GetByEmailAsync(email);
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        if (resultado.Message.Contains("no encontrado"))
-        {
-            return NotFound(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
     /// Crea un nuevo usuario
     /// </summary>
     [HttpPost]
@@ -255,130 +231,6 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Confirma el email de un usuario
-    /// </summary>
-    [HttpPost("{id}/confirm-email")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UserResponseDto>> ConfirmUserEmail(int id)
-    {
-        _logger.LogInformation("Solicitud de confirmación de email para usuario: {Id}", id);
-
-        var resultado = await _userService.ConfirmEmailAsync(id);
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        if (resultado.Message.Contains("no encontrado"))
-        {
-            return NotFound(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
-    /// Bloquea o desbloquea un usuario
-    /// </summary>
-    [HttpPost("{id}/lockout")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UserResponseDto>> SetUserLockout(int id, [FromBody] DateTimeOffset? lockoutEnd)
-    {
-        _logger.LogInformation("Solicitud de bloqueo para usuario: {Id}", id);
-
-        // Verificar que no se esté bloqueando a sí mismo
-        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (currentUserId == id.ToString())
-        {
-            return BadRequest(new UserResponseDto
-            {
-                Success = false,
-                Message = "No puedes bloquear tu propia cuenta"
-            });
-        }
-
-        var resultado = await _userService.SetLockoutAsync(id, lockoutEnd);
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        if (resultado.Message.Contains("no encontrado"))
-        {
-            return NotFound(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
-    /// Obtiene usuarios por rol
-    /// </summary>
-    [HttpGet("by-role/{role}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UsersListResponseDto>> GetUsersByRole(RolUsuario role)
-    {
-        _logger.LogInformation("Solicitud de usuarios por rol: {Role}", role);
-
-        var resultado = await _userService.GetByRoleAsync(role);
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
-    /// Obtiene solo usuarios activos
-    /// </summary>
-    [HttpGet("active")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UsersListResponseDto>> GetActiveUsers()
-    {
-        _logger.LogInformation("Solicitud de usuarios activos");
-
-        var resultado = await _userService.GetActiveUsersAsync();
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
-    /// Obtiene usuarios eliminados (inactivos)
-    /// </summary>
-    [HttpGet("deleted")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UsersListResponseDto>> GetDeletedUsers([FromQuery] int count = 10)
-    {
-        _logger.LogInformation("Solicitud de usuarios eliminados: {Count}", count);
-
-        // Crear filtro que incluye inactivos y excluye activos
-        var filter = new UserFilterDto
-        {
-            EstadoActivo = false, // Solo usuarios inactivos
-            IncludeInactive = true,
-            PageSize = count
-        };
-
-        var resultado = await _userService.GetAllAsync(filter);
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
     /// Reactivar un usuario eliminado (REVERT SOFT DELETE)
     /// </summary>
     [HttpPost("{id}/reactivate")]
@@ -404,30 +256,11 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Obtiene usuarios recientes (solo activos)
-    /// </summary>
-    [HttpGet("recent")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UsersListResponseDto>> GetRecentUsers([FromQuery] int count = 10)
-    {
-        _logger.LogInformation("Solicitud de usuarios recientes: {Count}", count);
-
-        var resultado = await _userService.GetRecentUsersAsync(count);
-
-        if (resultado.Success)
-        {
-            return Ok(resultado);
-        }
-
-        return BadRequest(resultado);
-    }
-
-    /// <summary>
     /// Obtiene estadísticas de usuarios
     /// </summary>
     [HttpGet("stats")]
     [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<UserResponseDto>> GetUserStats()
+    public async Task<ActionResult<UserStatsResponseDto>> GetUserStats()
     {
         _logger.LogInformation("Solicitud de estadísticas de usuarios");
 

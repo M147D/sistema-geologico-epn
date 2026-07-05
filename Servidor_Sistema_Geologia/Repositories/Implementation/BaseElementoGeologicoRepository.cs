@@ -13,13 +13,13 @@ namespace Servidor_Sistema_Geologia.Repositories.Implementation;
 public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologicoRepository<T> 
     where T : ElementoGeologico
 {
-    protected readonly GestorSistemaGeologia _context;
+    protected readonly SistemaGeologicoDbContext _context;
     protected readonly ILogger<BaseElementoGeologicoRepository<T>> _logger;
     protected abstract string ElementTypeName { get; }
     protected abstract Expression<Func<ElementoGeologico, bool>> TypeFilter { get; }
 
     protected BaseElementoGeologicoRepository(
-        GestorSistemaGeologia context, 
+        SistemaGeologicoDbContext context, 
         ILogger<BaseElementoGeologicoRepository<T>> logger)
     {
         _context = context;
@@ -39,11 +39,13 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
         return await _context.ElementosGeologicos
             .OfType<T>()
             .Include(e => e.Ubicacion)
-                .ThenInclude(u => u!.Pais)
-            .Include(e => e.Ubicacion)
                 .ThenInclude(u => u!.Provincia)
+                    .ThenInclude(p => p!.Pais)
             .Include(e => e.Galeria)
-                .ThenInclude(g => g.Fotos)
+                .ThenInclude(g => g!.Fotos)
+            .Include(e => e.UsuarioCreacion)
+            .Include(e => e.UsuarioActualizacion)
+            .Include(e => e.UsuarioEliminacion)
             .FirstOrDefaultAsync(e => e.Id == id && e.EstadoActivo);
     }
 
@@ -113,16 +115,14 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
         var totalCount = await query.CountAsync();
         var totalPages = (int)Math.Ceiling((double)totalCount / filter.PageSize);
 
-        // Get paginated results with full details
+        // Get paginated results with full details (Fotos not included — loaded separately by element ID)
         var elementos = await query
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .Include(e => e.Ubicacion)
-                .ThenInclude(u => u!.Pais)
-            .Include(e => e.Ubicacion)
                 .ThenInclude(u => u!.Provincia)
+                    .ThenInclude(p => p!.Pais)
             .Include(e => e.Galeria)
-                .ThenInclude(g => g.Fotos)
             .ToListAsync();
 
         // Map to DTOs
