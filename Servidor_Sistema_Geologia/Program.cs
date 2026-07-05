@@ -154,7 +154,7 @@ builder.Services.AddAuthentication(options =>
         },
         OnTokenValidated = context =>
         {
-            var userEmail = context.Principal?.FindFirst("email")?.Value ?? "Unknown";
+            var userEmail = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Unknown";
             Console.WriteLine($"✅ JWT Token validated for user: {userEmail}");
             return Task.CompletedTask;
         },
@@ -359,6 +359,18 @@ else
 }
 
 app.UseCors("AllowFrontend");
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
+    );
+    await next();
+});
 
 // UseRouting debe preceder a auth para que el endpoint matching ocurra
 // antes de que UseAuthorization evalúe las políticas [Authorize]

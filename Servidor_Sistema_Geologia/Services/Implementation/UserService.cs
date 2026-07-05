@@ -47,38 +47,6 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<UserResponseDto> GetByEmailAsync(string email)
-    {
-        try
-        {
-            var usuario = await _userRepository.GetByEmailAsync(email);
-            if (usuario == null)
-            {
-                return new UserResponseDto
-                {
-                    Success = false,
-                    Message = "Usuario no encontrado"
-                };
-            }
-
-            return new UserResponseDto
-            {
-                Success = true,
-                Message = "Usuario obtenido exitosamente",
-                User = MapToUserDetailDto(usuario)
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al obtener usuario por email: {Email}", email);
-            return new UserResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al obtener usuario"
-            };
-        }
-    }
-
     public async Task<UsersListResponseDto> GetAllAsync(UserFilterDto filter)
     {
         try
@@ -395,232 +363,7 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<UserResponseDto> ConfirmEmailAsync(int id)
-    {
-        try
-        {
-            var usuario = await _userRepository.GetByIdAsync(id);
-            if (usuario == null)
-            {
-                return new UserResponseDto
-                {
-                    Success = false,
-                    Message = "Usuario no encontrado"
-                };
-            }
-
-            var resultado = await _userRepository.SetEmailConfirmedAsync(usuario, true);
-
-            if (resultado.Succeeded)
-            {
-                _logger.LogInformation("Email confirmado exitosamente para usuario: {Id}", id);
-
-                return new UserResponseDto
-                {
-                    Success = true,
-                    Message = "Email confirmado exitosamente",
-                    User = MapToUserDetailDto(usuario)
-                };
-            }
-
-            return new UserResponseDto
-            {
-                Success = false,
-                Message = "Error al confirmar email",
-                Errors = resultado.Errors.Select(e => e.Description).ToList()
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al confirmar email para usuario: {Id}", id);
-            return new UserResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al confirmar email"
-            };
-        }
-    }
-
-    public async Task<UserResponseDto> SetLockoutAsync(int id, DateTimeOffset? lockoutEnd)
-    {
-        try
-        {
-            var usuario = await _userRepository.GetByIdAsync(id);
-            if (usuario == null)
-            {
-                return new UserResponseDto
-                {
-                    Success = false,
-                    Message = "Usuario no encontrado"
-                };
-            }
-
-            var resultado = await _userRepository.SetLockoutEndDateAsync(usuario, lockoutEnd);
-
-            if (resultado.Succeeded)
-            {
-                var message = lockoutEnd.HasValue ? "Usuario bloqueado exitosamente" : "Usuario desbloqueado exitosamente";
-                _logger.LogInformation("{Message}: {Id}", message, id);
-
-                return new UserResponseDto
-                {
-                    Success = true,
-                    Message = message,
-                    User = MapToUserDetailDto(usuario)
-                };
-            }
-
-            return new UserResponseDto
-            {
-                Success = false,
-                Message = "Error al cambiar estado de bloqueo",
-                Errors = resultado.Errors.Select(e => e.Description).ToList()
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al cambiar estado de bloqueo para usuario: {Id}", id);
-            return new UserResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al cambiar estado de bloqueo"
-            };
-        }
-    }
-
-    public async Task<UsersListResponseDto> GetByRoleAsync(RolUsuario role)
-    {
-        try
-        {
-            var usuarios = await _userRepository.GetByRoleAsync(role);
-
-            var userList = usuarios.Select(u => new UserListDto
-            {
-                Id = u.Id,
-                Email = u.Email!,
-                UserName = u.UserName,
-                NombreCompleto = u.NombreCompleto,
-                Rol = u.Rol,
-                FechaCreacion = u.FechaCreacion,
-                EstadoActivo = u.EstadoActivo
-            }).ToList();
-
-            return new UsersListResponseDto
-            {
-                Success = true,
-                Message = "Usuarios obtenidos exitosamente",
-                Data = new PaginatedUsersDto
-                {
-                    Users = userList,
-                    TotalCount = userList.Count,
-                    TotalPages = 1,
-                    CurrentPage = 1,
-                    PageSize = userList.Count,
-                    HasPrevious = false,
-                    HasNext = false
-                }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al obtener usuarios por rol: {Role}", role);
-            return new UsersListResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al obtener usuarios"
-            };
-        }
-    }
-
-    public async Task<UsersListResponseDto> GetActiveUsersAsync()
-    {
-        try
-        {
-            var usuarios = await _userRepository.GetAllActiveAsync();
-
-            var userList = usuarios.Select(u => new UserListDto
-            {
-                Id = u.Id,
-                Email = u.Email!,
-                UserName = u.UserName,
-                NombreCompleto = u.NombreCompleto,
-                Rol = u.Rol,
-                FechaCreacion = u.FechaCreacion,
-                EstadoActivo = u.EstadoActivo
-            }).ToList();
-
-            return new UsersListResponseDto
-            {
-                Success = true,
-                Message = "Usuarios activos obtenidos exitosamente",
-                Data = new PaginatedUsersDto
-                {
-                    Users = userList,
-                    TotalCount = userList.Count,
-                    TotalPages = 1,
-                    CurrentPage = 1,
-                    PageSize = userList.Count,
-                    HasPrevious = false,
-                    HasNext = false
-                }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al obtener usuarios activos");
-            return new UsersListResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al obtener usuarios activos"
-            };
-        }
-    }
-
-    public async Task<UsersListResponseDto> GetRecentUsersAsync(int count = 10)
-    {
-        try
-        {
-            var usuarios = await _userRepository.GetRecentUsersAsync(count);
-
-            var userList = usuarios.Select(u => new UserListDto
-            {
-                Id = u.Id,
-                Email = u.Email!,
-                UserName = u.UserName,
-                NombreCompleto = u.NombreCompleto,
-                Rol = u.Rol,
-                FechaCreacion = u.FechaCreacion,
-                EstadoActivo = u.EstadoActivo
-            }).ToList();
-
-            return new UsersListResponseDto
-            {
-                Success = true,
-                Message = "Usuarios recientes obtenidos exitosamente",
-                Data = new PaginatedUsersDto
-                {
-                    Users = userList,
-                    TotalCount = userList.Count,
-                    TotalPages = 1,
-                    CurrentPage = 1,
-                    PageSize = userList.Count,
-                    HasPrevious = false,
-                    HasNext = false
-                }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al obtener usuarios recientes");
-            return new UsersListResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al obtener usuarios recientes"
-            };
-        }
-    }
-
-    public async Task<UserResponseDto> GetUserStatsAsync()
+    public async Task<UserStatsResponseDto> GetUserStatsAsync()
     {
         try
         {
@@ -628,27 +371,30 @@ public class UserService : IUserService
             var activeCount = await _userRepository.GetActiveCountAsync();
             var countByRole = await _userRepository.GetUserCountByRoleAsync();
 
-            // Crear un objeto con estadísticas (usando UserDetailDto como contenedor)
-            var stats = new UserDetailDto
+            var porRol = countByRole.ToDictionary(
+                kvp => kvp.Key.ToString(),
+                kvp => kvp.Value
+            );
+
+            var stats = new UserStatsDto
             {
-                Id = totalCount,
-                // Usar campos existentes para mostrar estadísticas
-                NombreCompleto = $"Total: {totalCount}, Activos: {activeCount}",
-                Email = $"Admins: {countByRole.GetValueOrDefault(RolUsuario.Admin, 0)}, Premium: {countByRole.GetValueOrDefault(RolUsuario.Premium, 0)}, Free: {countByRole.GetValueOrDefault(RolUsuario.Free, 0)}",
-                EstadoActivo = true
+                TotalUsuarios = totalCount,
+                TotalActivos = activeCount,
+                TotalInactivos = totalCount - activeCount,
+                PorRol = porRol
             };
 
-            return new UserResponseDto
+            return new UserStatsResponseDto
             {
                 Success = true,
                 Message = "Estadísticas obtenidas exitosamente",
-                User = stats
+                Data = stats
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al obtener estadísticas de usuarios");
-            return new UserResponseDto
+            return new UserStatsResponseDto
             {
                 Success = false,
                 Message = "Error interno del servidor al obtener estadísticas"

@@ -1,4 +1,4 @@
-﻿namespace Servidor_Sistema_Geologia;
+namespace Servidor_Sistema_Geologia;
 
 public enum SubtipoFosil
 {

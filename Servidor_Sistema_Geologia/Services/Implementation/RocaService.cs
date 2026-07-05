@@ -1,5 +1,6 @@
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
+using Servidor_Sistema_Geologia.DTO.Gallery;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 
@@ -18,7 +19,7 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         IRocaRepository repository,
         IElementoGeologicoRepository historialRepository,
         ILogger<BaseElementoGeologicoService<Roca, CreateRocaDto, UpdateRocaDto>> logger,
-        GestorSistemaGeologia context)
+        SistemaGeologicoDbContext context)
         : base(repository, logger, context)
     {
         _rocaRepository = repository;
@@ -47,12 +48,6 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
             return ValidationResult.Error($"Ya existe una roca con el código '{createDto.Codigo}'");
         }
 
-        // Rock-specific validations
-        if (string.IsNullOrWhiteSpace(createDto.Litologia))
-        {
-            return ValidationResult.Error("La litología es obligatoria para una roca");
-        }
-
         return ValidationResult.Success();
     }
 
@@ -62,12 +57,6 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         if (await _repository.ExistsByCodigoAsync(updateDto.Codigo, id))
         {
             return ValidationResult.Error($"Ya existe una roca con el código '{updateDto.Codigo}'");
-        }
-
-        // Rock-specific validations
-        if (string.IsNullOrWhiteSpace(updateDto.Litologia))
-        {
-            return ValidationResult.Error("La litología es obligatoria para una roca");
         }
 
         return ValidationResult.Success();
@@ -104,9 +93,6 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
             ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
         }
 
-        // 🖼️ Crear galería automáticamente
-        var galeria = await CrearGaleriaAsync(createDto.Nombre);
-        
         return new Roca
         {
             Nombre = createDto.Nombre,
@@ -118,8 +104,8 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
             UbicacionId = ubicacion?.Id ?? 1, // Default if no location
-            GaleriaElementosGeologicoId = galeria.Id,
-            
+            // Nota: GaleriaElementosGeologicoId ya no existe - la relación ahora es Galeria -> Elemento
+
             // Rock-specific properties
             TipoRoca = createDto.TipoRoca,
             Litologia = createDto.Litologia,
@@ -130,7 +116,7 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         };
     }
 
-    protected override async Task MapUpdateDtoToEntityAsync(UpdateRocaDto updateDto, Roca roca)
+    protected override Task MapUpdateDtoToEntityAsync(UpdateRocaDto updateDto, Roca roca)
     {
         // Update base properties
         roca.Nombre = updateDto.Nombre;
@@ -150,6 +136,7 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         // Update rock-specific properties
         roca.TipoRoca = updateDto.TipoRoca;
         roca.Litologia = updateDto.Litologia;
+        return Task.CompletedTask;
     }
 
     protected override ElementoGeologicoDetailDto MapToDetailDto(Roca roca)
@@ -169,7 +156,11 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
             EstadoActivo = roca.EstadoActivo,
             FechaCreacion = roca.FechaCreacion,
             FechaActualizacion = roca.FechaActualizacion,
-            
+            FechaEliminacion = roca.FechaEliminacion,
+            CreadoPor = roca.UsuarioCreacion?.NombreCompleto,
+            ActualizadoPor = roca.UsuarioActualizacion?.NombreCompleto,
+            EliminadoPor = roca.UsuarioEliminacion?.NombreCompleto,
+
             // Relations
             Ubicacion = roca.Ubicacion != null ? new UbicacionDto
             {
@@ -183,7 +174,7 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
                 EstadoActivo = roca.Ubicacion.EstadoActivo,
                 FechaCreacion = roca.Ubicacion.FechaCreacion,
                 FechaActualizacion = roca.Ubicacion.FechaActualizacion,
-                NombrePais = roca.Ubicacion.Pais?.NombrePais,
+                NombrePais = roca.Ubicacion.Provincia?.Pais?.NombrePais,
                 NombreProvincia = roca.Ubicacion.Provincia?.NombreProvincia
             } : null,
             
@@ -192,7 +183,18 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
                 Id = roca.Galeria.Id,
                 DetalleGrupo = roca.Galeria.DetalleGrupo,
                 TotalFotos = roca.Galeria.Fotos?.Count ?? 0,
-                Fotos = new List<FotoElementoDto>()
+                Fotos = roca.Galeria.Fotos?
+                    .Select(f => new FotoElementoDto
+                    {
+                        Id = f.Id,
+                        GaleriaElementosGeologicoId = f.GaleriaElementosGeologicoId,
+                        TipoFoto = f.TipoFoto,
+                        DescripcionEspecifica = f.DescripcionEspecifica,
+                        FechaCreacion = f.FechaCreacion,
+                        FechaActualizacion = f.FechaActualizacion,
+                        EstadoActivo = f.EstadoActivo,
+                        ImagenUrl = $"/api/foto-elementos/imagen/{f.Id}"
+                    }).ToList() ?? new List<FotoElementoDto>()
             } : null,
             
             // Rock-specific properties
@@ -208,16 +210,4 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         };
     }
 
-    protected override async Task RegisterAccessAsync(int elementoId, int usuarioId, AccionesUsuario accion)
-    {
-        try
-        {
-            await _historialRepository.RegisterAccessAsync(elementoId, usuarioId, accion);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error registrando acceso para roca {ElementoId}", elementoId);
-            // Don't throw - this shouldn't break the main operation
-        }
-    }
 }

@@ -36,13 +36,13 @@ public class AuthService : IAuthService
                 };
             }
 
-            // Crear nuevo usuario
+            // Crear nuevo usuario — Rol siempre Free, ignorar lo que venga del cliente
             var usuario = new Servidor_Sistema_Geologia.Usuario
             {
                 UserName = model.Email,
                 Email = model.Email,
                 NombreCompleto = model.NombreCompleto,
-                Rol = model.Rol,
+                Rol = RolUsuario.Free,
                 FechaCreacion = DateTime.Now,
                 EstadoActivo = true
             };
@@ -119,14 +119,25 @@ public class AuthService : IAuthService
                 };
             }
 
-            // 🔥 VERIFICAR CONTRASEÑA SIN SIGN IN
+            // Verificar bloqueo por intentos fallidos ANTES de comprobar contraseña
+            if (await _authRepository.IsLockedOutAsync(usuario))
+            {
+                _logger.LogWarning("Intento de login con cuenta bloqueada: {Email}", model.Email);
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Cuenta bloqueada por demasiados intentos fallidos. Intente de nuevo en 5 minutos."
+                };
+            }
+
             var passwordValid = await _authRepository.CheckPasswordAsync(usuario, model.Password);
-            
+
             if (passwordValid)
             {
+                // Resetear contador de fallos al ingresar correctamente
+                await _authRepository.ResetAccessFailedCountAsync(usuario);
                 _logger.LogInformation("Usuario autenticado exitosamente: {Email}", model.Email);
 
-                // 🔥 GENERAR JWT TOKEN (12 HORAS)
                 var token = _jwtService.GenerateToken(usuario);
 
                 return new AuthResponseDto
@@ -145,10 +156,12 @@ public class AuthService : IAuthService
                         EmailConfirmed = usuario.EmailConfirmed
                     },
                     Token = token,
-                    TokenExpiration = DateTime.UtcNow.AddMinutes(720) // 12 horas
+                    TokenExpiration = DateTime.UtcNow.AddMinutes(720)
                 };
             }
 
+            // Registrar intento fallido — Identity activa lockout automáticamente al llegar a 3
+            await _authRepository.AccessFailedAsync(usuario);
             _logger.LogWarning("Credenciales inválidas para: {Email}", model.Email);
             return new AuthResponseDto
             {
@@ -188,57 +201,6 @@ public class AuthService : IAuthService
                 Success = false,
                 Message = "Error interno del servidor durante el logout"
             });
-        }
-    }
-
-    public async Task<AuthResponseDto> ChangePasswordAsync(string userId, ChangePasswordDto model)
-    {
-        try
-        {
-            // 🔥 USAR FindByIdAsync PARA JWT
-            var usuario = await _authRepository.FindByIdAsync(userId);
-            if (usuario == null)
-            {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "Usuario no encontrado"
-                };
-            }
-
-            var resultado = await _authRepository.ChangePasswordAsync(usuario, model.CurrentPassword, model.NewPassword);
-
-            if (resultado.Succeeded)
-            {
-                _logger.LogInformation("Contraseña cambiada exitosamente para usuario: {Email}", usuario.Email);
-
-                // GENERAR NUEVO TOKEN DESPUÉS DEL CAMBIO (12 HORAS)
-                var token = _jwtService.GenerateToken(usuario);
-
-                return new AuthResponseDto
-                {
-                    Success = true,
-                    Message = "Contraseña cambiada exitosamente",
-                    Token = token,
-                    TokenExpiration = DateTime.UtcNow.AddMinutes(720)
-                };
-            }
-
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error al cambiar la contraseña",
-                Errors = resultado.Errors.Select(e => e.Description).ToList()
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al cambiar contraseña para usuario: {UserId}", userId);
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al cambiar contraseña"
-            };
         }
     }
 
@@ -285,144 +247,4 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResponseDto> ConfirmEmailAsync(string userId, string token)
-    {
-        try
-        {
-            // 🔥 USAR FindByIdAsync PARA JWT
-            var usuario = await _authRepository.FindByIdAsync(userId);
-            if (usuario == null)
-            {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "Usuario no encontrado"
-                };
-            }
-
-            var resultado = await _authRepository.ConfirmEmailAsync(usuario, token);
-
-            if (resultado.Succeeded)
-            {
-                return new AuthResponseDto
-                {
-                    Success = true,
-                    Message = "Email confirmado exitosamente"
-                };
-            }
-
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error al confirmar email",
-                Errors = resultado.Errors.Select(e => e.Description).ToList()
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al confirmar email para usuario: {UserId}", userId);
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al confirmar email"
-            };
-        }
-    }
-
-    public async Task<AuthResponseDto> ForgotPasswordAsync(string email)
-    {
-        try
-        {
-            var usuario = await _authRepository.FindByEmailAsync(email);
-            if (usuario == null)
-            {
-                // Por seguridad, no revelar si el email existe o no
-                return new AuthResponseDto
-                {
-                    Success = true,
-                    Message = "Si el email existe, se enviará un enlace de recuperación"
-                };
-            }
-
-            var token = await _authRepository.GeneratePasswordResetTokenAsync(usuario);
-            
-            // Aquí implementarías el envío de email
-            // await _emailService.SendPasswordResetEmailAsync(usuario.Email, token);
-
-            return new AuthResponseDto
-            {
-                Success = true,
-                Message = "Se ha enviado un enlace de recuperación al email proporcionado"
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error en forgot password para email: {Email}", email);
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor"
-            };
-        }
-    }
-
-    public async Task<AuthResponseDto> ResetPasswordAsync(string email, string token, string newPassword)
-    {
-        try
-        {
-            var usuario = await _authRepository.FindByEmailAsync(email);
-            if (usuario == null)
-            {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "Usuario no encontrado"
-                };
-            }
-
-            var resultado = await _authRepository.ResetPasswordAsync(usuario, token, newPassword);
-
-            if (resultado.Succeeded)
-            {
-                return new AuthResponseDto
-                {
-                    Success = true,
-                    Message = "Contraseña restablecida exitosamente"
-                };
-            }
-
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error al restablecer contraseña",
-                Errors = resultado.Errors.Select(e => e.Description).ToList()
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al restablecer contraseña para email: {Email}", email);
-            return new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor al restablecer contraseña"
-            };
-        }
-    }
-
-
-
-    public async Task<bool> ValidateUserAsync(string userId)
-    {
-        try
-        {
-            // 🔥 USAR FindByIdAsync PARA JWT
-            var usuario = await _authRepository.FindByIdAsync(userId);
-            return usuario != null && usuario.EstadoActivo;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al validar usuario: {UserId}", userId);
-            return false;
-        }
-    }
 }

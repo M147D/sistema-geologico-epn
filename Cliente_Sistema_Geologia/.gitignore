@@ -1,0 +1,9 @@
+cliente-sistema-geologico/.env
+.json
+
+# Allow specific files for VITE_USE_STUBS
+!cliente-sistema-geologico/src/stubs/elementosStubs.js
+!cliente-sistema-geologico/src/stubs/gisStubs.js
+!cliente-sistema-geologico/src/hooks/useElementosService.js
+!cliente-sistema-geologico/src/hooks/useGeologiaGisService.js
+!cliente-sistema-geologico/.env.example

@@ -1,5 +1,6 @@
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
+using Servidor_Sistema_Geologia.DTO.Gallery;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 
@@ -18,7 +19,7 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
         IMineralRepository repository,
         IElementoGeologicoRepository historialRepository,
         ILogger<BaseElementoGeologicoService<Mineral, CreateMineralDto, UpdateMineralDto>> logger,
-        GestorSistemaGeologia context)
+        SistemaGeologicoDbContext context)
         : base(repository, logger, context)
     {
         _mineralRepository = repository;
@@ -64,12 +65,6 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
             return ValidationResult.Error($"Ya existe un mineral con el código '{updateDto.Codigo}'");
         }
 
-        // Mineral-specific validations
-        if (string.IsNullOrWhiteSpace(updateDto.Litologia))
-        {
-            return ValidationResult.Error("La litología es obligatoria para un mineral");
-        }
-
         return ValidationResult.Success();
     }
 
@@ -104,9 +99,6 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
             ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
         }
 
-        // 🖼️ Crear galería automáticamente
-        var galeria = await CrearGaleriaAsync(createDto.Nombre);
-        
         return new Mineral
         {
             Nombre = createDto.Nombre,
@@ -118,8 +110,8 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
             UbicacionId = ubicacion?.Id ?? 1, // Default if no location
-            GaleriaElementosGeologicoId = galeria.Id,
-            
+            // Nota: GaleriaElementosGeologicoId ya no existe - la relación ahora es Galeria -> Elemento
+
             // Mineral-specific properties
             TipoMineral = createDto.TipoMineral,
             Litologia = createDto.Litologia,
@@ -130,7 +122,7 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
         };
     }
 
-    protected override async Task MapUpdateDtoToEntityAsync(UpdateMineralDto updateDto, Mineral mineral)
+    protected override Task MapUpdateDtoToEntityAsync(UpdateMineralDto updateDto, Mineral mineral)
     {
         // Update base properties
         mineral.Nombre = updateDto.Nombre;
@@ -150,6 +142,7 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
         // Update mineral-specific properties
         mineral.TipoMineral = updateDto.TipoMineral;
         mineral.Litologia = updateDto.Litologia;
+        return Task.CompletedTask;
     }
 
     protected override ElementoGeologicoDetailDto MapToDetailDto(Mineral mineral)
@@ -169,7 +162,11 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
             EstadoActivo = mineral.EstadoActivo,
             FechaCreacion = mineral.FechaCreacion,
             FechaActualizacion = mineral.FechaActualizacion,
-            
+            FechaEliminacion = mineral.FechaEliminacion,
+            CreadoPor = mineral.UsuarioCreacion?.NombreCompleto,
+            ActualizadoPor = mineral.UsuarioActualizacion?.NombreCompleto,
+            EliminadoPor = mineral.UsuarioEliminacion?.NombreCompleto,
+
             // Relations
             Ubicacion = mineral.Ubicacion != null ? new UbicacionDto
             {
@@ -183,7 +180,7 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
                 EstadoActivo = mineral.Ubicacion.EstadoActivo,
                 FechaCreacion = mineral.Ubicacion.FechaCreacion,
                 FechaActualizacion = mineral.Ubicacion.FechaActualizacion,
-                NombrePais = mineral.Ubicacion.Pais?.NombrePais,
+                NombrePais = mineral.Ubicacion.Provincia?.Pais?.NombrePais,
                 NombreProvincia = mineral.Ubicacion.Provincia?.NombreProvincia
             } : null,
             
@@ -192,7 +189,18 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
                 Id = mineral.Galeria.Id,
                 DetalleGrupo = mineral.Galeria.DetalleGrupo,
                 TotalFotos = mineral.Galeria.Fotos?.Count ?? 0,
-                Fotos = new List<FotoElementoDto>()
+                Fotos = mineral.Galeria.Fotos?
+                    .Select(f => new FotoElementoDto
+                    {
+                        Id = f.Id,
+                        GaleriaElementosGeologicoId = f.GaleriaElementosGeologicoId,
+                        TipoFoto = f.TipoFoto,
+                        DescripcionEspecifica = f.DescripcionEspecifica,
+                        FechaCreacion = f.FechaCreacion,
+                        FechaActualizacion = f.FechaActualizacion,
+                        EstadoActivo = f.EstadoActivo,
+                        ImagenUrl = $"/api/foto-elementos/imagen/{f.Id}"
+                    }).ToList() ?? new List<FotoElementoDto>()
             } : null,
             
             // Mineral-specific properties
@@ -208,16 +216,4 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
         };
     }
 
-    protected override async Task RegisterAccessAsync(int elementoId, int usuarioId, AccionesUsuario accion)
-    {
-        try
-        {
-            await _historialRepository.RegisterAccessAsync(elementoId, usuarioId, accion);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error registrando acceso para mineral {ElementoId}", elementoId);
-            // Don't throw - this shouldn't break the main operation
-        }
-    }
 }

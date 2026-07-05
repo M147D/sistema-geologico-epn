@@ -11,7 +11,7 @@ using Servidor_Sistema_Geologia;
 
 namespace Servidor_Sistema_Geologia.Migrations
 {
-    [DbContext(typeof(GestorSistemaGeologia))]
+    [DbContext(typeof(SistemaGeologicoDbContext))]
     [Migration("20250602010531_UbicacionesCreate")]
     partial class UbicacionesCreate
     {

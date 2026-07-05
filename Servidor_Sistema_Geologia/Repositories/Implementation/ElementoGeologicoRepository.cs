@@ -6,10 +6,10 @@ namespace Servidor_Sistema_Geologia.Repositories.Implementation;
 
 public class ElementoGeologicoRepository : IElementoGeologicoRepository
 {
-    private readonly GestorSistemaGeologia _context;
+    private readonly SistemaGeologicoDbContext _context;
     private readonly ILogger<ElementoGeologicoRepository> _logger;
 
-    public ElementoGeologicoRepository(GestorSistemaGeologia context, ILogger<ElementoGeologicoRepository> logger)
+    public ElementoGeologicoRepository(SistemaGeologicoDbContext context, ILogger<ElementoGeologicoRepository> logger)
     {
         _context = context;
         _logger = logger;
@@ -26,11 +26,12 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
     {
         return await _context.ElementosGeologicos
             .Include(e => e.Ubicacion)
-                .ThenInclude(u => u.Pais)
+                .ThenInclude(u => u!.Provincia)
+                .ThenInclude(p => p!.Pais)
             .Include(e => e.Ubicacion)
-                .ThenInclude(u => u.Provincia)
+                .ThenInclude(u => u!.Provincia)
             .Include(e => e.Galeria)
-                .ThenInclude(g => g.Fotos)
+                .ThenInclude(g => g!.Fotos)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
@@ -85,17 +86,17 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
 
         if (filter.PaisId.HasValue)
         {
-            query = query.Where(e => e.Ubicacion.PaisId == filter.PaisId.Value);
+            query = query.Where(e => e.Ubicacion!.Provincia!.PaisId == filter.PaisId.Value);
         }
 
         if (filter.ProvinciaId.HasValue)
         {
-            query = query.Where(e => e.Ubicacion.ProvinciaId == filter.ProvinciaId.Value);
+            query = query.Where(e => e.Ubicacion!.ProvinciaId == filter.ProvinciaId.Value);
         }
 
         if (!string.IsNullOrEmpty(filter.Localidad))
         {
-            query = query.Where(e => e.Ubicacion.Localidad.Contains(filter.Localidad));
+            query = query.Where(e => e.Ubicacion!.Localidad!.Contains(filter.Localidad));
         }
 
         // Filtros por fechas
@@ -177,9 +178,10 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
         if (filter.IncludeUbicacion)
         {
             query = query.Include(e => e.Ubicacion)
-                         .ThenInclude(u => u.Pais)
+                         .ThenInclude(u => u!.Provincia)
+                .ThenInclude(p => p!.Pais)
                          .Include(e => e.Ubicacion)
-                         .ThenInclude(u => u.Provincia);
+                         .ThenInclude(u => u!.Provincia);
         }
 
         if (filter.IncludeGaleria)
@@ -189,7 +191,7 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
             if (filter.IncludeFotos)
             {
                 query = query.Include(e => e.Galeria)
-                             .ThenInclude(g => g.Fotos);
+                             .ThenInclude(g => g!.Fotos);
             }
         }
 
@@ -354,14 +356,14 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
     public async Task<List<ElementoGeologico>> GetByPaisAsync(int paisId)
     {
         return await _context.ElementosGeologicos
-            .Where(e => e.Ubicacion.PaisId == paisId && e.EstadoActivo)
+            .Where(e => e.Ubicacion!.Provincia!.PaisId == paisId && e.EstadoActivo)
             .ToListAsync();
     }
 
     public async Task<List<ElementoGeologico>> GetByProvinciaAsync(int provinciaId)
     {
         return await _context.ElementosGeologicos
-            .Where(e => e.Ubicacion.ProvinciaId == provinciaId && e.EstadoActivo)
+            .Where(e => e.Ubicacion!.ProvinciaId == provinciaId && e.EstadoActivo)
             .ToListAsync();
     }
 
@@ -498,7 +500,6 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
     public async Task<Ubicacion> CreateUbicacionAsync(Ubicacion ubicacion)
     {
         // Ensure no navigation properties are being tracked to avoid FK issues
-        ubicacion.Pais = null;
         ubicacion.Provincia = null;
         
         _context.Ubicaciones.Add(ubicacion);
@@ -545,7 +546,7 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
     {
         return await _context.FotosElementos
             .Include(f => f.Galeria)
-            .AnyAsync(f => f.Galeria.ElementoGeologicoId == elementoId);
+            .AnyAsync(f => f.Galeria!.ElementoGeologicoId == elementoId);
     }
 
     // 📊 ESTADÍSTICAS
@@ -576,12 +577,13 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
     public async Task<Dictionary<string, int>> GetCountByUbicacionAsync()
     {
         return await _context.ElementosGeologicos
-            .Where(e => e.EstadoActivo && e.Ubicacion.EstadoActivo)
+            .Where(e => e.EstadoActivo && e.Ubicacion!.EstadoActivo)
             .Include(e => e.Ubicacion)
-                .ThenInclude(u => u.Pais)
-            .GroupBy(e => e.Ubicacion.Pais.NombrePais)
+                .ThenInclude(u => u!.Provincia)
+                .ThenInclude(p => p!.Pais)
+            .GroupBy(e => e.Ubicacion!.Provincia!.Pais!.NombrePais)
             .Select(g => new { Pais = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Pais, x => x.Count);
+            .ToDictionaryAsync(x => x.Pais!, x => x.Count);
     }
 
     public async Task<Dictionary<string, int>> GetStatsAsync()
@@ -646,74 +648,4 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
             .ToListAsync();
     }
 
-    // 🔄 HISTORIAL DE ACCESO
-    public async Task RegisterAccessAsync(int elementoId, int usuarioId, AccionesUsuario accion)
-    {
-        // Para visualización, verificar si ya existe un registro reciente y actualizarlo
-        if (accion == AccionesUsuario.Visualizacion)
-        {
-            await UpdateOrCreateVisualizacionAsync(elementoId, usuarioId);
-            return;
-        }
-
-        // Para otras acciones, siempre crear un nuevo registro
-        var historial = new HistorialAcceso
-        {
-            ElementoGeologicoId = elementoId,
-            UsuarioId = usuarioId,
-            Accion = accion,
-            FechaAcceso = DateTime.UtcNow
-        };
-
-        _context.HistorialAccesos.Add(historial);
-        await _context.SaveChangesAsync();
-        
-        _logger.LogInformation("📝 Acción registrada: {Accion} en elemento {ElementoId} por usuario {UsuarioId}", 
-            accion, elementoId, usuarioId);
-    }
-
-    public async Task<List<HistorialAcceso>> GetHistorialAsync(int elementoId)
-    {
-        return await _context.HistorialAccesos
-            .Where(h => h.ElementoGeologicoId == elementoId)
-            .Include(h => h.Usuario)
-            .OrderByDescending(h => h.FechaAcceso)
-            .ToListAsync();
-    }
-
-    public async Task<HistorialAcceso?> GetLastVisualizacionAsync(int elementoId, int usuarioId)
-    {
-        return await _context.HistorialAccesos
-            .Where(h => h.ElementoGeologicoId == elementoId && 
-                       h.UsuarioId == usuarioId && 
-                       h.Accion == AccionesUsuario.Visualizacion)
-            .OrderByDescending(h => h.FechaAcceso)
-            .FirstOrDefaultAsync();
-    }
-
-    public async Task UpdateOrCreateVisualizacionAsync(int elementoId, int usuarioId)
-    {
-        var ultimaVisualizacion = await GetLastVisualizacionAsync(elementoId, usuarioId);
-        
-        if (ultimaVisualizacion != null)
-        {
-            // Actualizar la fecha de la última visualización
-            ultimaVisualizacion.FechaAcceso = DateTime.UtcNow;
-            _context.HistorialAccesos.Update(ultimaVisualizacion);
-        }
-        else
-        {
-            // Crear nueva visualización
-            var nuevaVisualizacion = new HistorialAcceso
-            {
-                ElementoGeologicoId = elementoId,
-                UsuarioId = usuarioId,
-                Accion = AccionesUsuario.Visualizacion,
-                FechaAcceso = DateTime.UtcNow
-            };
-            _context.HistorialAccesos.Add(nuevaVisualizacion);
-        }
-        
-        await _context.SaveChangesAsync();
-    }
 }

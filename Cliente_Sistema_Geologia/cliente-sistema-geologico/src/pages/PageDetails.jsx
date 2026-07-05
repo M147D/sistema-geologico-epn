@@ -1,11 +1,10 @@
-import React from 'react';
 import { Box, CircularProgress } from '@mui/material';
-import { useElementoDetail } from '../hooks/useElementoDetail';
+import { DetailProvider, useDetail } from '../context/DetailContext';
 import CardDetailElement from '../components/detail/CardDetailElement.jsx';
 import DetailErrorState from '../components/detail/DetailErrorState.jsx';
 
-const PageDetails = () => {
-  const detail = useElementoDetail();
+const PageDetailsContent = () => {
+  const detail = useDetail();
 
   if (detail.loadingDetail && !detail.elemento)
     return (
@@ -19,5 +18,11 @@ const PageDetails = () => {
 
   return <CardDetailElement {...detail} />;
 };
+
+const PageDetails = () => (
+  <DetailProvider>
+    <PageDetailsContent />
+  </DetailProvider>
+);
 
 export default PageDetails;

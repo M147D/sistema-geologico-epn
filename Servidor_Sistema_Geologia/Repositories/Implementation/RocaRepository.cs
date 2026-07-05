@@ -12,7 +12,7 @@ namespace Servidor_Sistema_Geologia.Repositories.Implementation;
 public class RocaRepository : BaseElementoGeologicoRepository<Roca>, IRocaRepository
 {
     public RocaRepository(
-        GestorSistemaGeologia context, 
+        SistemaGeologicoDbContext context, 
         ILogger<BaseElementoGeologicoRepository<Roca>> logger) 
         : base(context, logger)
     {

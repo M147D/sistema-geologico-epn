@@ -1,4 +1,5 @@
 using Servidor_Sistema_Geologia.DTO;
+using Servidor_Sistema_Geologia.DTO.Gallery;
 using Servidor_Sistema_Geologia.Galeria;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
@@ -16,20 +17,6 @@ public class FotoElementoService : IFotoElementoService
     {
         _fotoRepository = fotoRepository;
         _logger = logger;
-    }
-
-    public async Task<IEnumerable<FotoElementoDto>> GetAllAsync()
-    {
-        try
-        {
-            var fotos = await _fotoRepository.GetAllAsync();
-            return fotos.Select(MapToDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al obtener todas las fotos");
-            throw;
-        }
     }
 
     public async Task<FotoElementoDto?> GetByIdAsync(int id)
@@ -69,7 +56,9 @@ public class FotoElementoService : IFotoElementoService
                 GaleriaElementosGeologicoId = galeriaId,
                 TipoFoto = createDto.TipoFoto,
                 DescripcionEspecifica = createDto.DescripcionEspecifica,
-                Imagen = createDto.Imagen ?? new byte[0]
+                Imagen = createDto.Imagen ?? new byte[0],
+                EstadoActivo = true,
+                FechaCreacion = DateTime.Now
             };
 
             var createdFoto = await _fotoRepository.CreateAsync(foto);
@@ -130,6 +119,24 @@ public class FotoElementoService : IFotoElementoService
         }
     }
 
+    public async Task RestoreAsync(int id, int usuarioId)
+    {
+        try
+        {
+            if (!await _fotoRepository.ExistsAsync(id))
+            {
+                throw new KeyNotFoundException($"Foto con ID {id} no encontrada");
+            }
+
+            await _fotoRepository.RestoreAsync(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al restaurar foto con ID {Id}", id);
+            throw;
+        }
+    }
+
     public async Task<byte[]?> GetImagenAsync(int id)
     {
         try
@@ -140,6 +147,50 @@ public class FotoElementoService : IFotoElementoService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al obtener imagen de foto con ID {Id}", id);
+            throw;
+        }
+    }
+
+    public async Task<int?> GetOrCreateGaleriaIdAsync(int elementoId)
+    {
+        try
+        {
+            return await _fotoRepository.GetOrCreateGaleriaIdAsync(elementoId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener o crear galería para elemento {ElementoId}", elementoId);
+            throw;
+        }
+    }
+
+    public async Task<ElementoFotosResponseDto?> GetFotosByElementoAsync(int elementoId, bool isAdmin)
+    {
+        try
+        {
+            var result = await _fotoRepository.GetGaleriaConFotosAsync(elementoId, soloActivos: !isAdmin);
+            if (result == null) return null;
+
+            var (galeriaId, fotos) = result.Value;
+            return new ElementoFotosResponseDto
+            {
+                GaleriaId = galeriaId,
+                Fotos = fotos.Select(f => new FotoElementoDto
+                {
+                    Id = f.Id,
+                    GaleriaElementosGeologicoId = f.GaleriaElementosGeologicoId,
+                    TipoFoto = f.TipoFoto,
+                    DescripcionEspecifica = f.DescripcionEspecifica,
+                    FechaCreacion = f.FechaCreacion,
+                    FechaActualizacion = f.FechaActualizacion,
+                    EstadoActivo = f.EstadoActivo,
+                    ImagenUrl = $"/api/foto-elementos/imagen/{f.Id}"
+                }).ToList()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener fotos del elemento {ElementoId}", elementoId);
             throw;
         }
     }

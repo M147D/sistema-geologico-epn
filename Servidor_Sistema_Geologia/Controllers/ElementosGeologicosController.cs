@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Services.Interfaces;
-using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using System.Security.Claims;
 
 namespace Servidor_Sistema_Geologia.Controllers;
@@ -14,18 +14,21 @@ public class ElementosGeologicosController : ControllerBase
     private readonly IFosilService _fosilService;
     private readonly IMineralService _mineralService;
     private readonly IRocaService _rocaService;
-    private readonly IElementoGeologicoRepository _elementoRepository;
+    private readonly IElementoGeologicoService _elementoService;
+    private readonly IEmailService _emailService;
 
     public ElementosGeologicosController(
-        IFosilService fosilService, 
-        IMineralService mineralService, 
+        IFosilService fosilService,
+        IMineralService mineralService,
         IRocaService rocaService,
-        IElementoGeologicoRepository elementoRepository)
+        IElementoGeologicoService elementoService,
+        IEmailService emailService)
     {
         _fosilService = fosilService;
         _mineralService = mineralService;
         _rocaService = rocaService;
-        _elementoRepository = elementoRepository;
+        _elementoService = elementoService;
+        _emailService = emailService;
     }
 
     // ===========================================
@@ -37,8 +40,8 @@ public class ElementosGeologicosController : ControllerBase
     /// </summary>
     /// <param name="tipo">Filtro opcional por tipo: "Fosil", "Mineral", "Roca"</param>
     [HttpGet]
-    [Authorize(Roles = "Admin,Premium")]
-    public async Task<ActionResult> GetAll([FromQuery] string? tipo = null)
+    [Authorize(Roles = "Admin,Premium,Free,Invitado")]
+    public async Task<ActionResult> GetAll([FromQuery] string? tipo = null, [FromQuery] int? pageSize = null, [FromQuery] int? page = null)
     {
         try
         {
@@ -49,7 +52,9 @@ public class ElementosGeologicosController : ControllerBase
 
             var filter = new ElementoGeologicoFilterDto
             {
-                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+                IncludeUbicacion = true,
+                PageSize = pageSize ?? 10000,
+                Page = page ?? 1
             };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
@@ -81,7 +86,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Obtiene un elemento geológico por ID (detecta automáticamente el tipo)
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin,Premium")]
+    [Authorize(Roles = "Admin,Premium,Free,Invitado")]
     public async Task<ActionResult> GetById(int id)
     {
         try
@@ -94,15 +99,15 @@ public class ElementosGeologicosController : ControllerBase
             // Intentamos obtener el elemento de cada servicio hasta encontrarlo
             var fosilResult = await _fosilService.GetByIdAsync(id, usuarioId);
             if (fosilResult.Success)
-                return Ok(fosilResult.Data);
+                return Ok(new { success = true, data = fosilResult.Data });
 
             var mineralResult = await _mineralService.GetByIdAsync(id, usuarioId);
             if (mineralResult.Success)
-                return Ok(mineralResult.Data);
+                return Ok(new { success = true, data = mineralResult.Data });
 
             var rocaResult = await _rocaService.GetByIdAsync(id, usuarioId);
             if (rocaResult.Success)
-                return Ok(rocaResult.Data);
+                return Ok(new { success = true, data = rocaResult.Data });
 
             return NotFound("Elemento geológico no encontrado");
         }
@@ -120,8 +125,8 @@ public class ElementosGeologicosController : ControllerBase
     /// Obtiene todos los fósiles
     /// </summary>
     [HttpGet("fosiles")]
-    [Authorize(Roles = "Admin,Premium")]
-    public async Task<ActionResult> GetFosiles()
+    [Authorize(Roles = "Admin,Premium,Free,Invitado")]
+    public async Task<ActionResult> GetFosiles([FromQuery] int? pageSize = null, [FromQuery] int? page = null)
     {
         try
         {
@@ -132,7 +137,9 @@ public class ElementosGeologicosController : ControllerBase
 
             var filter = new ElementoGeologicoFilterDto
             {
-                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+                IncludeUbicacion = true,
+                PageSize = pageSize ?? 10000,
+                Page = page ?? 1
             };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
@@ -155,8 +162,8 @@ public class ElementosGeologicosController : ControllerBase
     /// Obtiene todos los minerales
     /// </summary>
     [HttpGet("minerales")]
-    [Authorize(Roles = "Admin,Premium")]
-    public async Task<ActionResult> GetMinerales()
+    [Authorize(Roles = "Admin,Premium,Free,Invitado")]
+    public async Task<ActionResult> GetMinerales([FromQuery] int? pageSize = null, [FromQuery] int? page = null)
     {
         try
         {
@@ -167,7 +174,9 @@ public class ElementosGeologicosController : ControllerBase
 
             var filter = new ElementoGeologicoFilterDto
             {
-                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+                IncludeUbicacion = true,
+                PageSize = pageSize ?? 10000,
+                Page = page ?? 1
             };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
@@ -190,8 +199,8 @@ public class ElementosGeologicosController : ControllerBase
     /// Obtiene todas las rocas
     /// </summary>
     [HttpGet("rocas")]
-    [Authorize(Roles = "Admin,Premium")]
-    public async Task<ActionResult> GetRocas()
+    [Authorize(Roles = "Admin,Premium,Free,Invitado")]
+    public async Task<ActionResult> GetRocas([FromQuery] int? pageSize = null, [FromQuery] int? page = null)
     {
         try
         {
@@ -202,7 +211,9 @@ public class ElementosGeologicosController : ControllerBase
 
             var filter = new ElementoGeologicoFilterDto
             {
-                IncludeUbicacion = true // Incluir ubicaciones para obtener coordenadas
+                IncludeUbicacion = true,
+                PageSize = pageSize ?? 10000,
+                Page = page ?? 1
             };
             
             // 🔐 LÓGICA DE SOFT DELETE BASADA EN ROLES
@@ -222,6 +233,31 @@ public class ElementosGeologicosController : ControllerBase
     }
 
     // ===========================================
+    // ENDPOINT DE BÚSQUEDA POR CÓDIGO
+    // ===========================================
+
+    /// <summary>
+    /// Busca un elemento geológico por su código. Retorna id y tipo si existe.
+    /// </summary>
+    [HttpGet("by-codigo/{codigo}")]
+    [Authorize(Roles = "Admin,Invitado")]
+    public async Task<ActionResult> GetByCodigo(string codigo)
+    {
+        try
+        {
+            var result = await _elementoService.GetByCodigoAsync(codigo, 0);
+            if (!result.Success || result.Data == null)
+                return NotFound(new { exists = false });
+
+            return Ok(new { exists = true, id = result.Data.Id, tipo = result.Data.TipoElemento.ToLower() });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error al buscar por código: {ex.Message}");
+        }
+    }
+
+    // ===========================================
     // ENDPOINTS DE CREACIÓN POR TIPO
     // ===========================================
 
@@ -229,7 +265,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Crea un nuevo fósil
     /// </summary>
     [HttpPost("fosiles")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Invitado")]
     public async Task<ActionResult> CreateFosil(CreateFosilDto createDto)
     {
         try
@@ -257,7 +293,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Crea un nuevo mineral
     /// </summary>
     [HttpPost("minerales")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Invitado")]
     public async Task<ActionResult> CreateMineral(CreateMineralDto createDto)
     {
         try
@@ -285,7 +321,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Crea una nueva roca
     /// </summary>
     [HttpPost("rocas")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Invitado")]
     public async Task<ActionResult> CreateRoca(CreateRocaDto createDto)
     {
         try
@@ -317,7 +353,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Actualiza un fósil específico
     /// </summary>
     [HttpPut("fosiles/{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Invitado")]
     public async Task<ActionResult> UpdateFosil(int id, UpdateFosilDto updateDto)
     {
         try
@@ -347,7 +383,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Actualiza un mineral específico
     /// </summary>
     [HttpPut("minerales/{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Invitado")]
     public async Task<ActionResult> UpdateMineral(int id, UpdateMineralDto updateDto)
     {
         try
@@ -377,7 +413,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Actualiza una roca específica
     /// </summary>
     [HttpPut("rocas/{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Invitado")]
     public async Task<ActionResult> UpdateRoca(int id, UpdateRocaDto updateDto)
     {
         try
@@ -440,6 +476,82 @@ public class ElementosGeologicosController : ControllerBase
     }
 
     // ===========================================
+    // ENDPOINT DE SOLICITUD DE INFORME PETROGRÁFICO
+    // ===========================================
+
+    /// <summary>
+    /// Envía una solicitud de informe petrográfico por correo.
+    /// Disponible para todos los roles autenticados.
+    /// </summary>
+    [HttpPost("{id}/solicitar-informe")]
+    [Authorize]
+    public async Task<ActionResult> SolicitarInformePetrografico(int id, [FromBody] SolicitudInformePetrograficoDto solicitudDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Datos inválidos",
+                    errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+                });
+            }
+
+            var result = await _elementoService.GetByIdWithDetailsAsync(id, 0);
+            if (!result.Success || result.Data == null)
+                return NotFound(new { success = false, message = "Elemento geológico no encontrado" });
+
+            // Construir descripción de ubicación
+            var u = result.Data.Ubicacion;
+            var ubicacionDesc = u != null
+                ? string.Join(", ", new[] { u.Localidad, u.NombreProvincia, u.NombrePais }
+                    .Where(s => !string.IsNullOrWhiteSpace(s) && s != "Desconocida" && s != "Desconocido"))
+                : null;
+
+            // Detectar tipo de elemento
+            var tipoElemento = result.Data.TipoElemento switch
+            {
+                "Fosil"   => "Fósil",
+                "Mineral" => "Mineral",
+                "Roca"    => "Roca",
+                _         => "Elemento Geológico"
+            };
+
+            var enviado = await _emailService.EnviarSolicitudInformeAsync(
+                correoSolicitante:    solicitudDto.CorreoSolicitante,
+                observaciones:        solicitudDto.Observaciones,
+                elementoId:           result.Data.Id,
+                elementoNombre:       result.Data.Nombre,
+                elementoCodigo:       result.Data.Codigo,
+                elementoTipo:         tipoElemento,
+                ubicacionDescripcion: ubicacionDesc
+            );
+
+            if (!enviado)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = "La solicitud fue recibida pero ocurrió un error al enviar el correo. " +
+                              "Por favor contacte directamente al laboratorio de petrografía."
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Solicitud de informe petrográfico enviada correctamente."
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = $"Error al procesar la solicitud: {ex.Message}" });
+        }
+    }
+
+    // ===========================================
     // MÉTODOS AUXILIARES PRIVADOS
     // ===========================================
 
@@ -448,8 +560,8 @@ public class ElementosGeologicosController : ControllerBase
     /// </summary>
     private async Task<PaginatedElementosGeologicosDto> GetAllElements(ElementoGeologicoFilterDto filter)
     {
-        // Use the unified repository to get all elements at once
-        return await _elementoRepository.GetAllAsync(filter);
+        var result = await _elementoService.GetAllAsync(filter);
+        return result.Data!;
     }
 
 

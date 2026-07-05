@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Box, Container, Divider, Paper, Alert, CircularProgress
 } from '@mui/material';
-import { getSubtipo } from './DetailHelpers.jsx';
+import { getSubtipo } from '../../utils/detailUtils.js';
 import DetailHeader from './DetailHeader';
 import DetailInfoGeneral from './DetailInfoGeneral';
 import DetailInfoTemporal from './DetailInfoTemporal';
@@ -15,13 +15,15 @@ import FotoModal from './FotoModal';
 import DialogInformePetrografico from './DialogInformePetrografico';
 
 const CardDetailElement = ({
-  id, elemento, fotos, loadingDetail,
+  elemento, fotos, loadingDetail,
   user, isAdmin, canEdit, canDelete,
   currentIndex, totalElementos, handleNavigate, handleGoBack,
   isEditing, editForm, saving, saveError, saveSuccess,
   handleStartEdit, handleCancelEdit, handleEditChange, handleSave,
   clearSaveError, clearSaveSuccess, handleSetSaveError,
   handleUploadPhoto, handleSavePhoto, handleDeletePhoto, handleRestorePhoto,
+  handleSolicitarInforme,
+  getImage, getImageThumbnail,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -56,6 +58,7 @@ const CardDetailElement = ({
           onSave={handleSave}
           onCancelEdit={handleCancelEdit}
           onClearSaveError={clearSaveError}
+          onSolicitarInforme={() => setInformeDialogOpen(true)}
         />
 
         <Box sx={{ p: 3 }}>
@@ -66,7 +69,8 @@ const CardDetailElement = ({
           )}
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: '1 1 160px', minWidth: 140 }}>
+            {/* Col 1: General */}
+            <Box sx={{ flex: '1 1 260px', minWidth: 220 }}>
               <DetailInfoGeneral
                 elemento={elemento}
                 isEditing={isEditing}
@@ -74,35 +78,36 @@ const CardDetailElement = ({
                 onEditChange={handleEditChange}
               />
             </Box>
-            <Box sx={{ flex: '1 1 140px', minWidth: 130 }}>
+
+            {/* Col 2: Temporal + Documentación apiladas */}
+            <Box sx={{ flex: '1 1 240px', minWidth: 200 }}>
               <DetailInfoTemporal
                 elemento={elemento}
                 isEditing={isEditing}
                 editForm={editForm}
                 onEditChange={handleEditChange}
               />
-            </Box>
-            <Box sx={{ flex: '1 1 140px', minWidth: 130 }}>
               <DetailInfoDocumentacion
                 elemento={elemento}
                 isEditing={isEditing}
                 editForm={editForm}
                 onEditChange={handleEditChange}
-                onSolicitarInforme={() => setInformeDialogOpen(true)}
               />
             </Box>
-            {isAdmin && (
-              <Box sx={{ flex: '1 1 130px', minWidth: 120 }}>
-                <DetailInfoAuditoria elemento={elemento} />
-              </Box>
-            )}
-            <Box sx={{ flex: '1 1 150px', minWidth: 140 }}>
+
+            {/* Col 3: Ubicación + Auditoría (admin) apiladas */}
+            <Box sx={{ flex: '1 1 240px', minWidth: 200 }}>
               <DetailInfoUbicacion
                 elemento={elemento}
                 isEditing={isEditing}
                 editForm={editForm}
                 onEditChange={handleEditChange}
               />
+              {isAdmin && (
+                <Box sx={{ mt: 2 }}>
+                  <DetailInfoAuditoria elemento={elemento} />
+                </Box>
+              )}
             </Box>
           </Box>
 
@@ -121,6 +126,8 @@ const CardDetailElement = ({
             onRestorePhoto={handleRestorePhoto}
             saveError={saveError}
             onSetSaveError={handleSetSaveError}
+            getImage={getImage}
+            getImageThumbnail={getImageThumbnail}
           />
         </Box>
       </Paper>
@@ -128,6 +135,7 @@ const CardDetailElement = ({
       <DialogInformePetrografico
         open={informeDialogOpen}
         onClose={() => setInformeDialogOpen(false)}
+        onSubmit={handleSolicitarInforme}
         elemento={elemento}
         userEmail={user?.email}
       />
@@ -139,6 +147,7 @@ const CardDetailElement = ({
         currentIndex={currentPhotoIndex}
         setCurrentIndex={setCurrentPhotoIndex}
         elemento={elemento}
+        getImage={getImage}
       />
     </Container>
   );

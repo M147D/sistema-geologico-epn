@@ -8,9 +8,9 @@ namespace Servidor_Sistema_Geologia.Repositories.Implementation;
 public class UserRepository : IUserRepository
 {
     private readonly UserManager<Usuario> _userManager;
-    private readonly GestorSistemaGeologia _context;
+    private readonly SistemaGeologicoDbContext _context;
 
-    public UserRepository(UserManager<Usuario> userManager, GestorSistemaGeologia context)
+    public UserRepository(UserManager<Usuario> userManager, SistemaGeologicoDbContext context)
     {
         _userManager = userManager;
         _context = context;
@@ -117,39 +117,6 @@ public class UserRepository : IUserRepository
         };
     }
 
-    public async Task<List<Usuario>> GetAllActiveAsync()
-    {
-        return await _context.Users
-            .Where(u => u.EstadoActivo)
-            .OrderBy(u => u.NombreCompleto)
-            .ToListAsync();
-    }
-
-    public async Task<List<Usuario>> GetByRoleAsync(RolUsuario role)
-    {
-        return await _context.Users
-            .Where(u => u.Rol == role && u.EstadoActivo)
-            .OrderBy(u => u.NombreCompleto)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Obtiene usuarios por rol incluyendo inactivos
-    /// </summary>
-    public async Task<List<Usuario>> GetByRoleAsync(RolUsuario role, bool includeInactive)
-    {
-        var query = _context.Users.Where(u => u.Rol == role);
-        
-        if (!includeInactive)
-        {
-            query = query.Where(u => u.EstadoActivo);
-        }
-        
-        return await query
-            .OrderBy(u => u.NombreCompleto)
-            .ToListAsync();
-    }
-
     public async Task<IdentityResult> CreateAsync(Usuario user, string password)
     {
         return await _userManager.CreateAsync(user, password);
@@ -172,22 +139,6 @@ public class UserRepository : IUserRepository
     {
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         return await _userManager.ResetPasswordAsync(user, token, newPassword);
-    }
-
-    public async Task<IdentityResult> SetEmailConfirmedAsync(Usuario user, bool confirmed)
-    {
-        user.EmailConfirmed = confirmed;
-        return await _userManager.UpdateAsync(user);
-    }
-
-    public async Task<IdentityResult> SetLockoutEnabledAsync(Usuario user, bool enabled)
-    {
-        return await _userManager.SetLockoutEnabledAsync(user, enabled);
-    }
-
-    public async Task<IdentityResult> SetLockoutEndDateAsync(Usuario user, DateTimeOffset? lockoutEnd)
-    {
-        return await _userManager.SetLockoutEndDateAsync(user, lockoutEnd);
     }
 
     public async Task<bool> ExistsAsync(int id)
@@ -213,35 +164,6 @@ public class UserRepository : IUserRepository
     public async Task<int> GetActiveCountAsync()
     {
         return await _context.Users.CountAsync(u => u.EstadoActivo);
-    }
-
-    public async Task<List<Usuario>> GetRecentUsersAsync(int count = 10)
-    {
-        return await _context.Users
-            .Where(u => u.EstadoActivo) // 🔥 Solo usuarios activos
-            .OrderByDescending(u => u.FechaCreacion)
-            .Take(count)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Obtiene usuarios eliminados (inactivos) recientemente
-    /// </summary>
-    public async Task<List<Usuario>> GetRecentDeletedUsersAsync(int count = 10)
-    {
-        return await _context.Users
-            .Where(u => !u.EstadoActivo) // Solo usuarios eliminados (inactivos)
-            .OrderByDescending(u => u.FechaCreacion)
-            .Take(count)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Obtiene el número de usuarios eliminados (inactivos)
-    /// </summary>
-    public async Task<int> GetDeletedCountAsync()
-    {
-        return await _context.Users.CountAsync(u => !u.EstadoActivo);
     }
 
     public async Task<Dictionary<RolUsuario, int>> GetUserCountByRoleAsync()

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Paper, Stack, Button } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';

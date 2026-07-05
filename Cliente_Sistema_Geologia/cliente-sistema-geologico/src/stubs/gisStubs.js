@@ -3,8 +3,6 @@
 // Geometrías inventadas — suficientes para probar rendering, leyenda y filtros.
 // processLayer (useGeoLayers) añade el campo `layer` automáticamente.
 
-const EMPTY_FC = { type: 'FeatureCollection', features: [] };
-
 const ECUADOR_FC = {
   type: 'FeatureCollection',
   features: [{
@@ -82,12 +80,4 @@ export const gisStubs = {
   getEcuador:            () => Promise.resolve(ECUADOR_FC),
   getProvincias:         () => Promise.resolve(PROVINCIAS_FC),
   getSimplifiedGeologia: () => Promise.resolve(GEOLOGIA_FC),
-  getAllGeologia:         () => Promise.resolve(GEOLOGIA_FC),
-  getGeologiaByBounds:   () => Promise.resolve(EMPTY_FC),
-  getGeologiaAtPoint:    () => Promise.resolve(null),
-  getGeologiaByLitologia:() => Promise.resolve(EMPTY_FC),
-  getGeologiaByEdad:     () => Promise.resolve(EMPTY_FC),
-  getGeologiaByProvincia:() => Promise.resolve(EMPTY_FC),
-  getStatistics:         () => Promise.resolve({ totalFormaciones: 4, features: [] }),
-  getInfo:               () => Promise.resolve({ status: 'stub' }),
 };

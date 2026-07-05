@@ -12,7 +12,7 @@ namespace Servidor_Sistema_Geologia.Repositories.Implementation;
 public class FosilRepository : BaseElementoGeologicoRepository<Fosil>, IFosilRepository
 {
     public FosilRepository(
-        GestorSistemaGeologia context, 
+        SistemaGeologicoDbContext context, 
         ILogger<BaseElementoGeologicoRepository<Fosil>> logger) 
         : base(context, logger)
     {

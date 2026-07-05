@@ -1,5 +1,6 @@
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
+using Servidor_Sistema_Geologia.DTO.Gallery;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 
@@ -18,7 +19,7 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
         IFosilRepository repository,
         IElementoGeologicoRepository historialRepository,
         ILogger<BaseElementoGeologicoService<Fosil, CreateFosilDto, UpdateFosilDto>> logger,
-        GestorSistemaGeologia context)
+        SistemaGeologicoDbContext context)
         : base(repository, logger, context)
     {
         _fosilRepository = repository;
@@ -74,17 +75,6 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
             return ValidationResult.Error($"Ya existe un fósil con el código '{updateDto.Codigo}'");
         }
 
-        // Fossil-specific validations
-        if (string.IsNullOrWhiteSpace(updateDto.Especie))
-        {
-            return ValidationResult.Error("La especie es obligatoria para un fósil");
-        }
-
-        if (string.IsNullOrWhiteSpace(updateDto.Periodo))
-        {
-            return ValidationResult.Error("El periodo es obligatorio para un fósil");
-        }
-
         return ValidationResult.Success();
     }
 
@@ -119,9 +109,6 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
             ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
         }
 
-        // 🖼️ Crear galería automáticamente
-        var galeria = await CrearGaleriaAsync(createDto.Nombre);
-        
         return new Fosil
         {
             Nombre = createDto.Nombre,
@@ -133,8 +120,8 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
             UbicacionId = ubicacion?.Id ?? 1, // Default if no location
-            GaleriaElementosGeologicoId = galeria.Id,
-            
+            // Nota: GaleriaElementosGeologicoId ya no existe - la relación ahora es Galeria -> Elemento
+
             // Fossil-specific properties
             TipoFosil = createDto.TipoFosil,
             Especie = createDto.Especie,
@@ -146,7 +133,7 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
         };
     }
 
-    protected override async Task MapUpdateDtoToEntityAsync(UpdateFosilDto updateDto, Fosil fosil)
+    protected override Task MapUpdateDtoToEntityAsync(UpdateFosilDto updateDto, Fosil fosil)
     {
         // Update base properties
         fosil.Nombre = updateDto.Nombre;
@@ -167,6 +154,7 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
         fosil.TipoFosil = updateDto.TipoFosil;
         fosil.Especie = updateDto.Especie;
         fosil.Periodo = updateDto.Periodo;
+        return Task.CompletedTask;
     }
 
     protected override ElementoGeologicoDetailDto MapToDetailDto(Fosil fosil)
@@ -186,7 +174,11 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
             EstadoActivo = fosil.EstadoActivo,
             FechaCreacion = fosil.FechaCreacion,
             FechaActualizacion = fosil.FechaActualizacion,
-            
+            FechaEliminacion = fosil.FechaEliminacion,
+            CreadoPor = fosil.UsuarioCreacion?.NombreCompleto,
+            ActualizadoPor = fosil.UsuarioActualizacion?.NombreCompleto,
+            EliminadoPor = fosil.UsuarioEliminacion?.NombreCompleto,
+
             // Relations
             Ubicacion = fosil.Ubicacion != null ? new UbicacionDto
             {
@@ -200,7 +192,7 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
                 EstadoActivo = fosil.Ubicacion.EstadoActivo,
                 FechaCreacion = fosil.Ubicacion.FechaCreacion,
                 FechaActualizacion = fosil.Ubicacion.FechaActualizacion,
-                NombrePais = fosil.Ubicacion.Pais?.NombrePais,
+                NombrePais = fosil.Ubicacion.Provincia?.Pais?.NombrePais,
                 NombreProvincia = fosil.Ubicacion.Provincia?.NombreProvincia
             } : null,
             
@@ -209,7 +201,18 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
                 Id = fosil.Galeria.Id,
                 DetalleGrupo = fosil.Galeria.DetalleGrupo,
                 TotalFotos = fosil.Galeria.Fotos?.Count ?? 0,
-                Fotos = new List<FotoElementoDto>()
+                Fotos = fosil.Galeria.Fotos?
+                    .Select(f => new FotoElementoDto
+                    {
+                        Id = f.Id,
+                        GaleriaElementosGeologicoId = f.GaleriaElementosGeologicoId,
+                        TipoFoto = f.TipoFoto,
+                        DescripcionEspecifica = f.DescripcionEspecifica,
+                        FechaCreacion = f.FechaCreacion,
+                        FechaActualizacion = f.FechaActualizacion,
+                        EstadoActivo = f.EstadoActivo,
+                        ImagenUrl = $"/api/foto-elementos/imagen/{f.Id}"
+                    }).ToList() ?? new List<FotoElementoDto>()
             } : null,
             
             // Fossil-specific properties
@@ -225,16 +228,4 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
         };
     }
 
-    protected override async Task RegisterAccessAsync(int elementoId, int usuarioId, AccionesUsuario accion)
-    {
-        try
-        {
-            await _historialRepository.RegisterAccessAsync(elementoId, usuarioId, accion);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error registrando acceso para fósil {ElementoId}", elementoId);
-            // Don't throw - this shouldn't break the main operation
-        }
-    }
 }

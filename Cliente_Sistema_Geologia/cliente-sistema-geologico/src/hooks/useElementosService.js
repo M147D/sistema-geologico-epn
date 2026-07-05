@@ -1,7 +1,8 @@
 // src/hooks/useElementosService.js
 import { useMemo } from 'react';
 import { elementosStubs } from '../stubs/elementosStubs';
-import { useApi } from '../context/ApiContext';
+import { api } from '../lib/apiClient';
+import { getImage as cacheGetImage, getImageThumbnail as cacheGetImageThumbnail } from '../utils/imageCache';
 
 /** @typedef {import('../types/elementosGeologicos').ElementoGeologicoListDto} ElementoGeologicoListDto */
 /** @typedef {import('../types/elementosGeologicos').ElementoGeologicoDetailDto} ElementoGeologicoDetailDto */
@@ -23,8 +24,6 @@ const USE_STUBS = import.meta.env.VITE_USE_STUBS === 'true';
  * Hook para gestionar las operaciones relacionadas con elementos geológicos
  */
 export const useElementosService = () => {
-  const { api } = useApi();
-
   return useMemo(() => {
     if (USE_STUBS) return elementosStubs;
 
@@ -279,29 +278,6 @@ export const useElementosService = () => {
     },
 
     /**
-     * Obtiene fotos de una galería
-     * @param {number} galeriaId - ID de la galería
-     * @returns {Promise<PhotoElementDto[]>} Lista de fotos
-     */
-    async getFotosGaleria(galeriaId) {
-      const response = await api.get(`/foto-elementos/galeria/${galeriaId}`);
-      return Array.isArray(response.data) ? response.data : [];
-    },
-
-    /**
-     * Sube una foto a una galería
-     * @param {number} galeriaId - ID de la galería
-     * @param {FormData} formData - Datos de la foto
-     * @returns {Promise<PhotoElementDto>} Foto creada
-     */
-    async uploadFoto(galeriaId, formData) {
-      const response = await api.post(`/foto-elementos/galeria/${galeriaId}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      return response.data;
-    },
-
-    /**
      * Obtiene la galería y fotos de un elemento (sin bytes de imagen)
      * @param {number} elementoId - ID del elemento geológico
      * @returns {Promise<{galeriaId: number|null, fotos: PhotoElementDto[]}>}
@@ -355,7 +331,21 @@ export const useElementosService = () => {
      */
     async restoreFoto(fotoId) {
       await api.patch(`/foto-elementos/${fotoId}/restaurar`);
-    }
+    },
+
+    /**
+     * Solicita un informe petrográfico para un elemento
+     * @param {number} id - ID del elemento
+     * @param {{ correoSolicitante: string, observaciones?: string }} dto
+     * @returns {Promise<{ success: boolean, message: string }>}
+     */
+    async solicitarInforme(id, dto) {
+      const response = await api.post(`/elementos-geologicos/${id}/solicitar-informe`, dto);
+      return response.data;
+    },
+
+    getImage: (fotoId) => cacheGetImage(api, fotoId),
+    getImageThumbnail: (fotoId) => cacheGetImageThumbnail(api, fotoId),
     });
-  }, [api]);
+  }, []);
 };
