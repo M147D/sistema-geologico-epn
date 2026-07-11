@@ -107,7 +107,7 @@ El **Front-End** (`Cliente_Sistema_Geologia/cliente-sistema-geologico/`) sigue u
 
 El siguiente diagrama ilustra el flujo de construcción y ejecución: en desarrollo, Node.js 20 y pnpm gestionan las dependencias mientras Vite convierte JSX a JS/HTML/CSS (`pnpm dev` con HMR, o `pnpm build` para empaquetar); en producción, el navegador solo descarga los archivos estáticos de `dist/` (HTML, JS y CSS ya compilados) sin depender de Node, Vite ni pnpm, mientras el Back-End se distribuye como binarios `.dll` generados por el SDK de .NET 8 y se ejecuta sobre el puerto 5095 sin requerir su código fuente en el servidor.
 
-![Diagrama de arquitectura de la aplicación web](DiagramasTIC.png)
+![Diagrama de arquitectura de la aplicación web](./DiagramasTIC.png)
 
 ---
 
