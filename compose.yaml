@@ -1,0 +1,86 @@
+# Desarrollo: base de datos, backend y frontend en contenedores separados.
+#   docker compose up -d --build
+#   docker compose run --rm api dotnet run --no-launch-profile -- --migrate   (primera vez)
+# Frontend: http://localhost:5174   API: http://localhost:5095/swagger
+# Los contenedores corren con tu usuario: si tu UID/GID no es 1000, define
+# UID_HOST y GID_HOST en .env. Las contraseñas de aquí son de prueba.
+name: sistemageologico
+
+x-db-env: &db-env
+  APP_DB_USER: ${APP_DB_USER:-sistemageologico}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:-solo-desarrollo}
+  DATOS_DB: ${DATOS_DB:-sistemageologico_datos}
+  GIS_DB: ${GIS_DB:-sistemageologico_gis}
+
+services:
+  db:
+    image: postgis/postgis:18-3.6
+    environment:
+      <<: *db-env
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-solo-desarrollo}
+      POSTGRES_DB: postgres
+    volumes:
+      - db-datos:/var/lib/postgresql
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${GIS_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: docker/dev
+      dockerfile: api.Dockerfile
+    image: sistemageologico-api-dev:10.0.403
+    working_dir: /app/Servidor_Sistema_Geologia
+    user: "${UID_HOST:-1000}:${GID_HOST:-1000}"
+    environment:
+      HOME: /tmp
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=db;Database=${DATOS_DB:-sistemageologico_datos};Username=${APP_DB_USER:-sistemageologico};Password=${APP_DB_PASSWORD:-solo-desarrollo}
+      ConnectionStrings__PostGISConnection: Host=db;Database=${GIS_DB:-sistemageologico_gis};Username=${APP_DB_USER:-sistemageologico};Password=${APP_DB_PASSWORD:-solo-desarrollo}
+      JwtSettings__SecretKey: ${JWT_SECRET:-solo-desarrollo-clave-jwt-falsa-de-al-menos-32-caracteres}
+      DefaultSuperAdmin__Email: ${ADMIN_EMAIL:-admin@sistemageologico.local}
+      DefaultSuperAdmin__Password: ${ADMIN_PASSWORD:-SoloDesarrollo1}
+      EmailSettings__SmtpHost: ${SMTP_HOST:-}
+      EmailSettings__SenderEmail: ${SMTP_SENDER_EMAIL:-}
+      EmailSettings__SenderPassword: ${SMTP_PASSWORD:-}
+      EmailSettings__DestinationEmails__0: ${INFORME_DESTINO:-}
+    volumes:
+      - .:/app
+      - nuget:/nuget
+    ports:
+      - "127.0.0.1:5095:5095"
+    command: dotnet watch run --no-launch-profile --non-interactive --urls http://0.0.0.0:5095
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: docker/dev
+      dockerfile: web.Dockerfile
+    image: sistemageologico-web-dev:26.13.0
+    working_dir: /app/Cliente_Sistema_Geologia/cliente-sistema-geologico
+    user: "${UID_HOST:-1000}:${GID_HOST:-1000}"
+    environment:
+      HOME: /tmp
+      VITE_PROXY_TARGET: http://api:5095
+      VITE_API_URL: /api
+      CI: "true"
+    volumes:
+      - .:/app
+      - dependencias:/app/Cliente_Sistema_Geologia/cliente-sistema-geologico/node_modules
+    ports:
+      - "127.0.0.1:5174:5174"
+    # El volumen de dependencias empieza vacío: se instala antes de arrancar.
+    command: sh -c "pnpm install --frozen-lockfile --store-dir node_modules/.pnpm-store && exec pnpm dev --host 0.0.0.0"
+    depends_on:
+      - api
+
+volumes:
+  db-datos:
+  nuget:
+  dependencias:
