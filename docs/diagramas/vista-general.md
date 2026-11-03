@@ -1,42 +1,50 @@
 # DIA-01 · Vista general
 
-**Qué muestra:** las piezas del sistema y cómo se comunican hoy, en desarrollo
-local.
+**Qué muestra:** las piezas del sistema y cómo se comunican, en producción.
 
-**Sale de:** `Servidor_Sistema_Geologia/Program.cs`,
-`Cliente_Sistema_Geologia/cliente-sistema-geologico/vite.config.js`,
-`src/lib/apiClient.js`, `Services/Implementation/EmailService.cs`,
-`src/constants/mapConstants.js`.
+**Sale de:** `Servidor_Sistema_Geologia/Program.cs`, `Caddyfile`,
+`compose.prod.yaml`, `src/lib/apiClient.js`,
+`Services/Implementation/EmailService.cs`,
+`Services/Implementation/ImageProcessingService.cs`,
+`src/constants/mapConstants.js` (commit `8dfe171`).
 
-**Texto que lo explica:** [ARQ-01](../arquitectura/diagrama.md); índice
-[DIA-00](indice.md).
+**Texto que lo explica:** [ARQ-01](../arquitectura/diagrama.md); entornos en
+[DIA-08](entornos.md); índice [DIA-00](indice.md).
 
 ```mermaid
 flowchart LR
   U["Navegador (Admin, Invitado, Premium, Free)"]
-  subgraph Front["Frontend: SPA React + Vite (5174)"]
+  Caddy["Caddy: HTTPS y encabezados"]
+  subgraph Front["web: SPA React (Nginx)"]
     SPA["Páginas, contextos y hooks"]
     AX["apiClient (Axios + JWT en localStorage)"]
   end
-  subgraph Back["Backend: ASP.NET Core 8 (5095)"]
+  subgraph Back["api: ASP.NET Core 10"]
     CTRL["Controllers"]
     SRV["Services"]
     REPO["Repositories"]
-    IMG["Miniatura y marca de agua (GDI+, solo Windows)"]
+    IMG["ImageProcessingService (SkiaSharp)"]
     QML["QmlColorService (GIS/*.qml)"]
   end
-  SQL[("SQL Server: identidad, catálogo y fotos")]
-  PG[("PostgreSQL + PostGIS: capas geológicas")]
+  subgraph PG["db: PostgreSQL 18 + PostGIS"]
+    D1[("sistemageologico_datos: identidad, catálogo, fotos")]
+    D2[("sistemageologico_gis: capas")]
+  end
   SMTP["Servidor SMTP"]
   OSM["Teselas de OpenStreetMap"]
 
-  U --> SPA --> AX
-  AX -- "/api (proxy de Vite)" --> CTRL
+  U --> Caddy
+  Caddy -- "/" --> SPA
+  SPA --> AX
+  AX -- "/api" --> Caddy
+  Caddy -- "/api/*" --> CTRL
   CTRL --> SRV --> REPO
   CTRL --> IMG
   SRV --> QML
-  REPO --> SQL
-  REPO --> PG
+  REPO --> D1
+  REPO --> D2
   SRV -- "solicitud de informe" --> SMTP
   U -- "mapa base" --> OSM
 ```
+
+En desarrollo, el proxy de Vite ocupa el lugar de Caddy (DIA-08).

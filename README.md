@@ -36,7 +36,7 @@
 
 El Museo Petrográfico "Tomás Feininger" del Departamento de Geología de la EPN no contaba con un sistema digital que permitiera catalogar, consultar y georreferenciar su colección de fósiles, minerales y rocas; el registro dependía de medios físicos y hojas de cálculo desconectadas entre sí, sin visualización cartográfica ni control de acceso diferenciado por tipo de usuario.
 
-Este proyecto desarrolla un sistema web compuesto por un Front-End (React + Vite) y un Back-End (ASP.NET Core 8.0) que digitaliza el catálogo de muestras y lo integra con un módulo de mapas interactivos sobre la cartografía geológica oficial del Ecuador (capas GIS en PostGIS). La solución permite registrar cada muestra con su ficha petrográfica, ubicarla geográficamente sobre el mapa geológico nacional, gestionar su galería fotográfica con protección diferenciada por rol, y administrar el acceso de usuarios según su perfil (Administrador, Premium, Free), todo dentro de un mismo flujo de navegación.
+Este proyecto desarrolla un sistema web compuesto por un Front-End (React + Vite) y un Back-End (ASP.NET Core 10) que digitaliza el catálogo de muestras y lo integra con un módulo de mapas interactivos sobre la cartografía geológica oficial del Ecuador (capas GIS en PostGIS). La solución permite registrar cada muestra con su ficha petrográfica, ubicarla geográficamente sobre el mapa geológico nacional, gestionar su galería fotográfica con protección diferenciada por rol, y administrar el acceso de usuarios según su perfil (Administrador, Premium, Free), todo dentro de un mismo flujo de navegación.
 
 ---
 
@@ -81,8 +81,8 @@ Este proyecto desarrolla un sistema web compuesto por un Front-End (React + Vite
 
 | Tecnología | Versión |
 |------------|---------|
-| ASP.NET Core | 8.0 |
-| Entity Framework Core | 8.0.0 |
+| ASP.NET Core | 10.0 |
+| Entity Framework Core (Npgsql) | 10.0 |
 | React | 18.3.1 |
 | Vite | 6.0.3 |
 | Material-UI (MUI) | 6.4.3 |
@@ -90,10 +90,11 @@ Este proyecto desarrolla un sistema web compuesto por un Front-End (React + Vite
 | Axios | 1.7.9 |
 | react-router-dom | 7.1.0 |
 | NetTopologySuite | 2.6.0 |
-| Npgsql.EntityFrameworkCore.PostgreSQL | 8.0.10 |
-| MailKit | 4.7.1.1 |
-| SQL Server (SQLEXPRESS) | — |
-| PostgreSQL + PostGIS | 16 |
+| Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.3 |
+| SkiaSharp (marca de agua) | 4.154.0 |
+| MailKit | 4.18.2 |
+| PostgreSQL + PostGIS | 18 / 3.6 |
+| Docker Compose + Caddy | — / 2.10.2 |
 
 ---
 
@@ -101,13 +102,28 @@ Este proyecto desarrolla un sistema web compuesto por un Front-End (React + Vite
 
 El sistema separa Front-End y Back-End en dos proyectos independientes que se comunican vía HTTP/JSON.
 
-El **Back-End** (`Servidor_Sistema_Geologia/`) sigue el patrón Repository + Service + Controller: un controlador unificado (`ElementosGeologicosController`) expone fósiles, minerales y rocas mediante herencia TPH (*Table-Per-Hierarchy*) sobre una entidad base auditable. Usa dos bases de datos: SQL Server para identidad y operaciones CRUD, y PostgreSQL + PostGIS para las consultas espaciales del mapa geológico.
+El **Back-End** (`Servidor_Sistema_Geologia/`) sigue el patrón Repository + Service + Controller: un controlador unificado (`ElementosGeologicosController`) expone fósiles, minerales y rocas mediante herencia TPH (*Table-Per-Hierarchy*) sobre una entidad base auditable. Usa un servidor PostgreSQL + PostGIS con dos bases: una para identidad y operaciones CRUD, y otra para las capas espaciales del mapa geológico.
 
 El **Front-End** (`Cliente_Sistema_Geologia/cliente-sistema-geologico/`) sigue un patrón Página-Componente con Context API: cada contexto (`AuthContext`, `ElementosContext`, `GeologiaContext`, `UsersContext`, etc.) encapsula su propio *hook* de servicio HTTP, y las páginas delegan toda la lógica de negocio a su contexto, dejando los componentes como UI pura.
 
 El siguiente diagrama ilustra el flujo de construcción y ejecución: en desarrollo, Node.js 20 y pnpm gestionan las dependencias mientras Vite convierte JSX a JS/HTML/CSS (`pnpm dev` con HMR, o `pnpm build` para empaquetar); en producción, el navegador solo descarga los archivos estáticos de `dist/` (HTML, JS y CSS ya compilados) sin depender de Node, Vite ni pnpm, mientras el Back-End se distribuye como binarios `.dll` generados por el SDK de .NET 8 y se ejecuta sobre el puerto 5095 sin requerir su código fuente en el servidor.
 
 ![Diagrama de arquitectura de la aplicación web](./DiagramasTIC.png)
+
+> El diagrama corresponde a la ejecución sin contenedores. Desde el 2026-11-03 la base de datos, el Back-End y el Front-End corren en contenedores Docker separados (ver `docs/diagramas/entornos.md`).
+
+---
+
+# Ejecución
+
+Requiere solo git y Docker.
+
+```bash
+docker compose up -d --build
+docker compose run --rm api dotnet run --no-launch-profile -- --migrate
+```
+
+Front-End en `http://localhost:5174`, API en `http://localhost:5095/swagger`. Guía completa: `docs/arquitectura/reconstruir-desde-cero.md`; producción en un servidor: `docs/despliegue/vps-docker.md`.
 
 ---
 

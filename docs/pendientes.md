@@ -8,7 +8,7 @@ reutilizar, y una línea en el índice de `CLAUDE.md`.
 
 ## PEN-01 · Miniaturas y marca de agua que funcionen fuera de Windows
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): `ImageProcessingService` con SkiaSharp, falla cerrado; commit `c0791da`. Ver PS-01.
 
 **Situación actual:** `FotoElementosController` usa System.Drawing y aplica la
 miniatura y la marca de agua solo si `OperatingSystem.IsWindows()` (REV-01,
@@ -31,7 +31,7 @@ existe).
 
 ## PEN-02 · Versionar los archivos que el repo necesita para construirse
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): `package.json` reconstruido del lockfile, `appsettings.json` sin secretos y `.gitignore` explícito; commit `03a514d`.
 
 **Situación actual:** `.gitignore` ignoraba `*.json`, `*.md`, `*.sh` y
 `docs/`. `*.md` y `docs/` se quitaron el 2026-11-03 para poder versionar
@@ -45,13 +45,13 @@ frontend ni configuración del backend).
 del `pnpm-lock.yaml`; versionar `appsettings.json` sin secretos (los secretos
 entran por variables de entorno); reglas de `.gitignore` explícitas.
 
-**Restricciones:** ningún secreto real en git. Al cerrarlo: el runbook de reconstrucción y ARQ-03.
+**Restricciones:** ningún secreto real en git. Al cerrarlo: ARQ-02 y ARQ-03.
 
 **Relacionados:** [REV-01](revisiones/2026-11-03-sistema-completo.md).
 
 ## PEN-03 · Sembrar los datos de referencia que el código da por existentes
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): `SeedData.EnsureUbicacionDesconocidaAsync` crea y resuelve por nombre el país y la provincia "Desconocido"; commit `c0791da`. Verificado en una base nueva con ART-01.
 
 **Situación actual:** una ubicación sin país o provincia toma los ids 1
 ("Desconocido"), que nada crea (REV-01, H-03).
@@ -64,14 +64,14 @@ que cree el país y la provincia "Desconocido", y que el servicio busque esas
 filas por nombre en lugar de usar el id literal.
 
 **Restricciones:** no debe duplicar filas en una base que ya las tenga. Al
-cerrarlo: DIA-03 y el runbook de reconstrucción.
+cerrarlo: DIA-03 y ARQ-02.
 
 **Relacionados:** [REV-01](revisiones/2026-11-03-sistema-completo.md),
 PEN-05.
 
 ## PEN-04 · Capas GIS reproducibles
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** en curso (2026-11-03): el esquema de las tres tablas se crea vacío al iniciar PostGIS (`docker/db/init/01-bases-y-capas-gis.sh`, commit `edc0544`); faltan los datos del IIGE y su paso de carga (el usuario no los tiene a mano, 2026-11-03).
 
 **Situación actual:** `tb_geologia`, `tb_provincias` y `tb_ecuador` se leen
 desde PostGIS, pero no hay en el repo ni el esquema ni los datos ni el
@@ -84,8 +84,7 @@ geológico del Ecuador (IIGE, 2017) importado con QGIS.
 script de carga que se ejecute al crear el contenedor de PostGIS.
 
 **Restricciones:** el volcado puede pesar mucho; revisar la licencia de los
-datos del IIGE antes de publicarlo en un repo público. Al cerrarlo: DIA-03, el runbook de
-reconstrucción y el documento de despliegue.
+datos del IIGE antes de publicarlo en un repo público. Al cerrarlo: DIA-03, ARQ-02 y DEP-01.
 
 **Relacionados:** [REV-01](revisiones/2026-11-03-sistema-completo.md).
 
@@ -164,7 +163,7 @@ imágenes del elemento aunque solo necesite los metadatos.
 
 ## PEN-09 · Decidir el motor de la base del catálogo
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): por decisión del usuario, todo en PostgreSQL; migraciones regeneradas sin migrar datos (base nueva). Ver CAM-03.
 
 **Situación actual:** el catálogo y la identidad exigen SQL Server; las capas
 GIS, PostgreSQL con PostGIS (REV-01, H-10).
@@ -183,7 +182,7 @@ reales. Al cerrarlo: ARQ-03, DIA-03 y el diagrama de entornos (aún no existe).
 
 ## PEN-10 · Configuración obligatoria y explícita al arrancar
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): cadenas de conexión y clave JWT obligatorias al arrancar, CORS desde `Cors:AllowedOrigins`, superadmin solo con contraseña configurada y sin escribirla en el log; commit `c0791da`.
 
 **Situación actual:** la clave JWT tiene un valor por defecto al validar y es
 obligatoria al emitir (REV-01, H-11). Los orígenes CORS están fijos en el
@@ -198,7 +197,25 @@ valores de ejemplo en lugar de fallar.
 configuración) y fallar si falta algo en producción.
 
 **Restricciones:** en desarrollo puede haber valores locales, pero fuera del
-código. Al cerrarlo: ARQ-01 (variables de entorno) y el runbook
-de reconstrucción.
+código. Al cerrarlo: ARQ-01 (variables de entorno) y ARQ-02.
 
 **Relacionados:** [REV-01](revisiones/2026-11-03-sistema-completo.md).
+
+## PEN-11 · Respaldos programados fuera del servidor
+
+**Estado:** pendiente (2026-11-03).
+
+**Situación actual:** DEP-01 tiene los comandos de respaldo y restauración,
+probados el 2026-11-03, pero nada los ejecuta solo ni define adónde van.
+
+**Problema que resolvería:** las fotos del museo viven en la base; perder el
+volumen sin respaldo es perder la colección digital.
+
+**Propuesta inicial:** un cron diario en el servidor que ejecute los dos
+`pg_dump` de DEP-01, conserve N copias y las copie a otro sitio (destino a
+decidir por el museo).
+
+**Restricciones:** el destino y la retención los decide el responsable del
+servidor. Al cerrarlo: DEP-01.
+
+**Relacionados:** [DEP-01](despliegue/vps-docker.md).

@@ -1,33 +1,41 @@
 # ARQ-01 · Arquitectura actual
 
-Estado descrito: rama `main`, commit `d30f189` (2026-07-11), tal como se
-clonó de `github.com/M147D/sistema-geologico-epn` el 2026-11-03. El runbook
-de reconstrucción y el documento de despliegue en Docker todavía no existen.
-Stack y entornos: [ARQ-03](stack-y-entornos.md). Diagramas:
-[DIA-00](../diagramas/indice.md). Índice del proyecto: [CLAUDE.md](../../CLAUDE.md).
+Estado descrito: rama `docker-postgresql`, commit `8dfe171` (2026-11-03): el
+sistema en .NET 10 y PostgreSQL, con base, backend y frontend en contenedores
+separados. El estado anterior (SQL Server, .NET 8, sin contenedores) está en
+[REV-01](../revisiones/2026-11-03-sistema-completo.md), commit `d30f189`.
+Reconstruir: [ARQ-02](reconstruir-desde-cero.md). Desplegar:
+[DEP-01](../despliegue/vps-docker.md). Stack: [ARQ-03](stack-y-entornos.md).
+Diagramas: [DIA-00](../diagramas/indice.md). Índice: [CLAUDE.md](../../CLAUDE.md).
 
 ## Stack (resumen)
 
-- **Frontend:** SPA en React 18 + Vite 6, MUI 6, Leaflet / react-leaflet, Axios.
-- **Backend:** API REST en ASP.NET Core 8 con EF Core 8, Identity y JWT.
-- **Persistencia:** SQL Server (identidad y catálogo, fotos incluidas) y
-  PostgreSQL + PostGIS (capas del mapa geológico, solo lectura).
-- **Servicios externos:** SMTP (solicitud de informe petrográfico) y teselas
-  de OpenStreetMap. Detalle en [ARQ-03](stack-y-entornos.md).
+- **Frontend:** SPA en React 18 + Vite 6, MUI 6, Leaflet; en producción,
+  estáticos en Nginx sin privilegios.
+- **Backend:** API REST en ASP.NET Core 10 con EF Core 10, Identity, JWT y
+  SkiaSharp para las imágenes.
+- **Persistencia:** un servidor PostgreSQL 18 + PostGIS 3.6 con dos bases:
+  `sistemageologico_datos` (identidad, catálogo y fotos) y
+  `sistemageologico_gis` (capas del mapa, solo lectura).
+- **Borde:** Caddy (HTTPS automático, encabezados de seguridad, `/api/*` →
+  API, el resto → frontend).
+- **Externos:** SMTP (informe petrográfico) y teselas de OpenStreetMap.
+  Detalle en [ARQ-03](stack-y-entornos.md).
 
 ## Estilo y patrones
 
 SPA + API, con el backend en capas Controller → Service → Repository
-(**parcial**: los servicios de elementos escriben directo en el DbContext y el
-controlador de fotos procesa imágenes). Repository genérico, Template Method,
-herencia TPH, auditoría con borrado lógico, DTO e inyección de dependencias,
-aplicados. En el frontend, contextos como store con hooks de servicio privados
-y páginas contenedoras con componentes presentacionales. Evidencia y
-hallazgos: [REV-01](../revisiones/2026-11-03-sistema-completo.md).
+(**parcial**: los servicios de elementos escriben directo en el DbContext).
+El procesamiento de imágenes salió del controlador a
+`ImageProcessingService`. Repository genérico, Template Method, herencia TPH,
+auditoría con borrado lógico, DTO e inyección de dependencias, aplicados. En
+el frontend, contextos como store con hooks de servicio privados y páginas
+contenedoras. Evidencia: [REV-01](../revisiones/2026-11-03-sistema-completo.md).
 
 ## Vista general
 
-[DIA-01](../diagramas/vista-general.md).
+[DIA-01](../diagramas/vista-general.md); entornos y despliegue en
+[DIA-08](../diagramas/entornos.md).
 
 ## Arquitectura de carpetas
 
@@ -38,10 +46,19 @@ SistemaGeologico/
 ├── Servidor_Sistema_Geologia/     # backend ASP.NET Core (API REST)
 ├── Cliente_Sistema_Geologia/
 │   └── cliente-sistema-geologico/ # frontend React + Vite
-├── R_Sistema_Geologico.sln        # solución de Visual Studio (solo el backend)
-├── DiagramasTIC.png               # diagrama de construcción del README
+├── docker/
+│   ├── db/init/                   # init de PostgreSQL: usuario, dos bases, capas GIS vacías
+│   ├── dev/                       # imágenes de desarrollo (SDK de .NET, Node + pnpm)
+│   └── prod/                      # imágenes de producción y nginx.conf
+├── compose.yaml                   # desarrollo: db, api, web
+├── compose.prod.yaml              # producción: db, api, web, caddy
+├── Caddyfile                      # HTTPS, encabezados y rutas del borde
+├── .env.example                   # variables (sin valores reales)
+├── scripts/
+│   ├── check-docs.mjs             # verificador de la documentación
+│   └── artefactos/                # ART-NN: prueba de humo
 ├── docs/                          # esta documentación (índice en CLAUDE.md)
-├── scripts/check-docs.mjs         # verificador de la documentación
+├── R_Sistema_Geologico.sln        # solución de Visual Studio (solo el backend)
 └── CLAUDE.md                      # índice de la documentación
 ```
 
@@ -49,43 +66,38 @@ SistemaGeologico/
 
 ```text
 Servidor_Sistema_Geologia/
-├── Program.cs              # composición: DbContexts, Identity, JWT, CORS, DI, semilla del superadmin
-├── Controllers/            # endpoints HTTP; FotoElementosController también procesa imágenes
+├── Program.cs              # composición, config obligatoria, JWT, CORS, /health, --migrate, --healthcheck
+├── appsettings.json        # valores no secretos; los secretos llegan por variables de entorno
+├── Controllers/            # endpoints HTTP
 ├── Services/
-│   ├── Interfaces/         # contratos de la lógica de negocio
-│   └── Implementation/     # lógica: base genérica de elementos + fósil/mineral/roca, usuarios, auth, JWT, correo, GIS, QML
-├── Repositories/
 │   ├── Interfaces/
-│   └── Implementation/     # acceso a datos; base genérica con OfType<T>
-├── Models/                 # entidades por área: ElementosGeologicos, Locations, Users, Auditoria, Galeria, GIS
-├── DTO/                    # contratos de la API por área (Auth, ElementosGeologicos, Users, Gallery, Locations, GIS)
-├── DAL/                    # SistemaGeologicoDbContext (SQL Server) y PostGISDbContext (PostgreSQL)
-├── Migrations/             # migraciones de EF Core del catálogo (solo SQL Server)
+│   └── Implementation/     # lógica: elementos (base + fósil/mineral/roca), usuarios, auth, JWT, correo, GIS, QML, imágenes
+├── Repositories/           # acceso a datos; base genérica con OfType<T>
+├── Models/                 # entidades: ElementosGeologicos, Locations, Users, Auditoria, Galeria, GIS
+├── DTO/                    # contratos de la API por área
+├── DAL/                    # SistemaGeologicoDbContext y PostGISDbContext (ambos Npgsql)
+├── Migrations/             # una migración: InitialPostgres (2026-11-03)
 ├── Constants/              # enums: roles, subtipos, tipo de foto
-├── Data/SeedData.cs        # semilla duplicada que nadie llama (REV-01, H-12)
-├── GIS/                    # estilo QML de QGIS: colores y etiquetas de las formaciones
-└── Scripts/                # SQL de ejemplo desactualizado (REV-01, H-13)
+├── Data/SeedData.cs        # semilla idempotente: roles, superadmin, país/provincia "Desconocido"
+└── GIS/                    # estilo QML de QGIS: colores y etiquetas de las formaciones
 ```
 
 ### Frontend (`Cliente_Sistema_Geologia/cliente-sistema-geologico/`)
 
 ```text
 cliente-sistema-geologico/
-├── index.html, index.css   # documento y estilos globales
-├── vite.config.js          # servidor de desarrollo en 5174, proxy /api → 5095
-├── .env.example            # VITE_API_URL, VITE_USE_STUBS
-├── pnpm-lock.yaml          # dependencias (package.json no está en el repo: REV-01, H-02)
+├── package.json            # dependencias y scripts (dev, build, lint, preview); pnpm 10
+├── pnpm-lock.yaml
+├── vite.config.js          # servidor en 5174; proxy /api → VITE_PROXY_TARGET
+├── index.html, index.css
 └── src/
     ├── main.jsx, App.jsx   # arranque, proveedores globales y rutas
-    ├── pages/              # pantallas: consumen el contexto y manejan carga y errores
-    ├── components/         # UI pura por área: auth, crud, detail, excel, layout, login, mapa, users
+    ├── pages/              # pantallas: consumen el contexto
+    ├── components/         # UI pura por área
     ├── context/            # estado: Auth, Elementos (globales); Users, Geologia, Excel, Detail (por página)
     ├── hooks/              # servicios HTTP, privados de su contexto
-    ├── lib/apiClient.js    # instancia única de Axios + token JWT
-    ├── constants/          # roles, colores de subtipos, mapas, parámetros del mapa
-    ├── types/              # typedefs JSDoc que reflejan los DTO del backend
-    ├── utils/              # caché de imágenes, utilidades del detalle
-    └── stubs/              # datos falsos para VITE_USE_STUBS=true
+    ├── lib/apiClient.js    # Axios + token JWT
+    ├── constants/, types/, utils/, stubs/
 ```
 
 ## Modelo de datos
@@ -95,8 +107,9 @@ cliente-sistema-geologico/
 ## Contrato de API
 
 Todas las rutas cuelgan de `/api`. "Autenticado" = cualquier JWT válido.
-Las respuestas de error de autenticación son JSON
-(`{ success:false, message, ... }`) con 401 o 403 (`Program.cs`).
+Errores de autenticación en JSON (`{ success:false, message, ... }`) con 401
+o 403; en producción, una excepción no controlada responde 500 con
+`{ success:false, message:"Error interno del servidor" }`.
 
 | Método | Ruta | Acceso | Qué hace |
 |---|---|---|---|
@@ -108,7 +121,7 @@ Las respuestas de error de autenticación son JSON
 | GET | `/users/{id}` | Admin | Detalle. |
 | POST | `/users` | Admin | Crea usuario con rol. |
 | PUT | `/users/{id}` | Admin | Edita (incluye rol y estado). |
-| DELETE | `/users/{id}` | Admin | Desactiva. |
+| DELETE | `/users/{id}` | Admin | Desactiva (borrado lógico). |
 | POST | `/users/{id}/change-password`, `/toggle-status`, `/reactivate` | Admin | Contraseña y estado. |
 | GET | `/users/stats`, `/check-email/{email}`, `/check-username/{userName}` | Admin | Estadísticas y unicidad. |
 | GET | `/elementos-geologicos` | Admin, Premium, Free, Invitado | Lista (filtro `tipo`). |
@@ -120,9 +133,9 @@ Las respuestas de error de autenticación son JSON
 | DELETE | `/elementos-geologicos/{id}` | Admin | Borrado lógico. |
 | POST | `/elementos-geologicos/{id}/solicitar-informe` | autenticado | Envía por correo la solicitud de informe petrográfico. |
 | GET | `/foto-elementos/galeria/{galeriaId}` | autenticado | Fotos de una galería. |
-| GET | `/foto-elementos/imagen/{id}` | autenticado | Bytes de la imagen (`?thumb=true`); marca de agua si no es Premium/Admin/Invitado (solo en Windows: REV-01, H-01). |
+| GET | `/foto-elementos/imagen/{id}` | autenticado | Imagen (`?thumb=true` → 300×200 como máximo); marca de agua salvo para Premium, Admin e Invitado. |
 | GET | `/foto-elementos/por-elemento/{elementoId}` | autenticado | Galería y metadatos de fotos. |
-| POST | `/foto-elementos/galeria/{galeriaId}`, `/elemento/{elementoId}` | Admin, Invitado | Sube una foto (multipart). |
+| POST | `/foto-elementos/galeria/{galeriaId}`, `/elemento/{elementoId}` | Admin, Invitado | Sube una foto (multipart, campo `ImagenFile`). |
 | PUT | `/foto-elementos/{id}` | Admin, Invitado | Edita una foto. |
 | DELETE | `/foto-elementos/{id}` | Admin | Borrado lógico. |
 | PATCH | `/foto-elementos/{id}/restaurar` | Admin | Restaura. |
@@ -132,68 +145,81 @@ Las respuestas de error de autenticación son JSON
 | GET | `/GeologiaGIS/provincias` | autenticado | Polígonos de provincias (GeoJSON). |
 | GET | `/GeologiaGIS/geologia/simplified?tolerance=` | autenticado | Formaciones simplificadas con `ST_Simplify` (GeoJSON con color y etiqueta del QML). |
 
-`/swagger` solo existe con `ASPNETCORE_ENVIRONMENT=Development`. La lista de
-endpoints que `Program.cs` imprime al arrancar está desactualizada (nombra
-`/geologia/point`, `/estadisticas` e `/info`, que no existen).
+Fuera de `/api`: `GET /health` (anónimo; estado de las dos bases). Caddy
+no lo expone: solo reenvía `/api/*` a la API. `/swagger` existe solo con
+`ASPNETCORE_ENVIRONMENT=Development`.
+
+Modos de línea de comandos del mismo binario: `--migrate` aplica las
+migraciones y la semilla y termina; `--healthcheck` consulta `/health` y
+termina con 0 o 1 (lo usa el `HEALTHCHECK` de la imagen).
 
 ## Componentes y servicios principales
 
 | Módulo | Responsabilidad | Depende de |
 |---|---|---|
-| `Program.cs` | Composición, autenticación, CORS, cabeceras de seguridad, roles y superadmin al arrancar | configuración |
-| `BaseElementoGeologicoService` + `Fosil/Mineral/RocaService` | Alta, edición y borrado de elementos; crea ubicación, provincia y galería | repositorio y DbContext |
-| `ElementoGeologicoService` | Consultas unificadas de los tres tipos | `ElementoGeologicoRepository` |
-| `FotoElementoService` + `FotoElementosController` | Fotos en la base; miniatura y marca de agua (GDI+, solo Windows) con caché en memoria de 500 MB | `IMemoryCache` |
-| `AuthService`, `JwtService` | Registro, login con bloqueo, emisión de JWT (12 h por defecto) | Identity |
+| `Program.cs` | Composición; valida la configuración obligatoria al arrancar; JWT; CORS; encabezados; `/health` | configuración |
+| `Data/SeedData.cs` | Roles, superadmin (solo si hay email y contraseña configurados) y país/provincia "Desconocido" | Identity, DbContext |
+| `BaseElementoGeologicoService` + `Fosil/Mineral/RocaService` | Alta, edición y borrado; crea ubicación (con "Desconocido" si falta), provincia y galería | repositorio y DbContext |
+| `FotoElementosController` + `FotoElementoService` | Fotos en la base con caché en memoria (500 MB, 2 h) | `IImageProcessingService`, `IMemoryCache` |
+| `ImageProcessingService` | Miniatura y marca de agua con SkiaSharp; falla cerrado si no puede marcar | fuente DejaVu Sans Bold (o `ImageProcessing:WatermarkFontPath`) |
+| `AuthService`, `JwtService` | Registro, login con bloqueo, JWT (12 h por defecto) | Identity |
 | `UserService` | Administración de usuarios | Identity |
-| `GeologiaGISService` + `QmlColorService` | GeoJSON de PostGIS con colores y etiquetas leídos del QML | `PostGISDbContext`, `GIS/*.qml` |
-| `EmailService` | Envío SMTP con MailKit | configuración `EmailSettings` |
+| `GeologiaGISService` + `QmlColorService` | GeoJSON de PostGIS con colores del QML | `PostGISDbContext`, `GIS/*.qml` |
+| `EmailService` | SMTP con MailKit | `EmailSettings` |
 | `src/lib/apiClient.js` | Axios con `baseURL = VITE_API_URL` y el token en `localStorage` | — |
-| `src/context/*` | Estado y operaciones por área; cada uno usa su hook de servicio | hooks, `apiClient` |
 
 ## Estado de seguridad
 
-Resumen de lo que hace el código; la auditoría de seguridad es un trabajo
-aparte.
+Lo que hace el código; los hallazgos de la auditoría de seguridad van aparte.
 
-- **Autenticación:** JWT HS256, emisor y audiencia validados, sin tolerancia de
-  reloj; 12 h de vida; el rol va en el token, así que un cambio de rol o una
-  desactivación no rigen hasta que el token expira.
-- **Contraseñas:** Identity (mínimo 6, dígito, minúscula y mayúscula);
-  bloqueo de 5 min tras 3 fallos.
-- **Autorización:** atributos `[Authorize(Roles=…)]` por endpoint; el cliente
-  repite las guardias solo para la navegación.
-- **Secretos:** fuera del repo (por la regla `*.json`), pero con valores por
-  defecto en el código para la clave JWT y la contraseña del superadmin, y la
-  contraseña se escribe en el log al crearlo.
-- **Cabeceras:** `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` y una CSP
-  restrictiva en las respuestas de la API. HTTPS y HSTS solo fuera de
-  Development.
-- **CORS:** orígenes `localhost` fijos en el código.
-- **Validación:** DataAnnotations y expresiones regulares en modelos y DTO
-  (`NoInjectionAttribute`); la regex de nombres (`^[a-zA-Z\s]+$`) rechaza
-  tildes y eñes.
+- **Autenticación:** JWT HS256 con clave obligatoria de 32 caracteres como
+  mínimo (la API no arranca sin ella); emisor y audiencia validados; 12 h de
+  vida; el rol viaja en el token.
+- **Contraseñas:** Identity (mínimo 6, dígito, minúscula y mayúscula); bloqueo
+  de 5 min tras 3 fallos. El superadmin solo se crea si hay contraseña
+  configurada, y la contraseña no se escribe en el log.
+- **Autorización:** `[Authorize(Roles=…)]` por endpoint.
+- **Fotos:** la marca de agua para Free se aplica en el servidor en cualquier
+  sistema operativo; si falla, no se entrega la imagen.
+- **Secretos:** solo por variables de entorno (`.env` fuera de git);
+  `appsettings.json` no tiene secretos; las imágenes no contienen secretos
+  (verificado con `docker history`).
+- **Borde:** Caddy con HTTPS, HSTS, CSP, `X-Frame-Options: DENY`,
+  `nosniff`, `Permissions-Policy` y límite de 25 MB por petición. La API agrega
+  `default-src 'none'` a sus respuestas.
+- **Contenedores:** usuarios sin privilegios (api 1654, web 101), sistema de
+  archivos de solo lectura, `no-new-privileges`; la base solo en una red
+  interna sin puertos publicados.
+- **Base de datos:** la aplicación usa un rol propio, dueño de la base del
+  catálogo y con solo `SELECT` en la de GIS.
 
 ## Variables de entorno
 
-Backend (`appsettings.json` o variables de entorno con `__` como separador,
-p. ej. `ConnectionStrings__DefaultConnection`):
+Backend (variables con `__` como separador de secciones):
 
-| Clave | Uso | Por defecto en el código | Si falta |
+| Clave | Uso | Por defecto | Si falta |
 |---|---|---|---|
-| `ConnectionStrings:DefaultConnection` | SQL Server del catálogo e identidad | — | falla al primer acceso a datos |
-| `ConnectionStrings:PostGISConnection` | PostgreSQL + PostGIS | — | falla el mapa |
-| `JwtSettings:SecretKey` | firma del JWT (≥ 32 caracteres) | clave de ejemplo solo al validar | no se puede iniciar sesión |
-| `JwtSettings:Issuer` / `Audience` | emisor y audiencia | `SistemaGeologico` / `SistemaGeologico-API` | usa el valor por defecto |
-| `JwtSettings:ExpirationMinutes` | vida del token | 720 | usa el valor por defecto |
-| `DefaultSuperAdmin:Email`, `UserName`, `Password`, `NombreCompleto` | superadmin creado al arrancar | `admin@sistemageologico.com`, `superadmin`, `Admin123!`, `Super Administrador` | usa el valor por defecto |
-| `EmailSettings:SmtpHost`, `SmtpPort`, `UseSsl`, `UseStartTls`, `SenderEmail`, `SenderName`, `SenderPassword`, `DestinationEmails[]`, `DestinationName` | correo de informes | puerto 587, STARTTLS | la solicitud de informe responde error sin 500 |
-| `QmlColorFilePath` | ruta del estilo QML | `GIS/Estilo colores geología.qml` | formaciones sin color |
-| `ASPNETCORE_ENVIRONMENT` | Development habilita Swagger y la página de errores | Production | — |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL del catálogo e identidad | — | no arranca |
+| `ConnectionStrings__PostGISConnection` | PostgreSQL de las capas GIS | — | no arranca |
+| `JwtSettings__SecretKey` | firma del JWT (≥ 32 caracteres) | — | no arranca |
+| `JwtSettings__Issuer` / `__Audience` / `__ExpirationMinutes` | emisor, audiencia, vida | `SistemaGeologico` / `SistemaGeologico-API` / 720 | valor por defecto |
+| `DefaultSuperAdmin__Email`, `__Password`, `__UserName`, `__NombreCompleto` | superadmin de la semilla | — / — / `superadmin` / `Super Administrador` | sin email o contraseña, no se crea |
+| `Cors__AllowedOrigins__0…` | orígenes permitidos si el frontend está en otro dominio | ninguno | sin CORS (no hace falta con el proxy) |
+| `EmailSettings__SmtpHost`, `__SmtpPort`, `__UseSsl`, `__UseStartTls`, `__SenderEmail`, `__SenderName`, `__SenderPassword`, `__DestinationEmails__0…`, `__DestinationName` | correo de informes | puerto 587, STARTTLS | la solicitud de informe responde 200 con `success:false` |
+| `ImageProcessing__WatermarkFontPath` | fuente de la marca de agua | DejaVu Sans Bold, Arial | no arranca si no hay ninguna |
+| `QmlColorFilePath` | estilo QML | `GIS/Estilo colores geología.qml` | formaciones sin color |
+| `ASPNETCORE_ENVIRONMENT` | `Development` habilita Swagger | `Production` en la imagen | — |
 
-Frontend (en tiempo de **build**, Vite las incrusta en el JS):
+Compose (`.env`, plantilla en `.env.example`): `DOMINIO`, `POSTGRES_PASSWORD`,
+`APP_DB_USER`, `APP_DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`,
+`SMTP_*`, `INFORME_DESTINO`, `PUERTO_HTTP`, `PUERTO_HTTPS`, `UID_HOST`,
+`GID_HOST`. Su correspondencia con las claves de arriba está en
+`compose.prod.yaml`.
+
+Frontend (en tiempo de **build**; Vite las incrusta en el JS):
 
 | Variable | Uso | Por defecto |
 |---|---|---|
-| `VITE_API_URL` | base de la API | `/api` en `.env.example` |
+| `VITE_API_URL` | base de la API | `/api` |
 | `VITE_USE_STUBS` | datos falsos sin backend | `false` |
+| `VITE_PROXY_TARGET` | solo servidor de desarrollo: destino de `/api` | `http://localhost:5095` (en Docker, `http://api:5095`) |
