@@ -248,8 +248,31 @@ validar:
   (un PNG de ~1 KB de 3000×3000 sube ~66 MB la memoria por cada vista sin
   caché); el efecto depende de la memoria del contenedor en producción.
 
-**Problema que resolvería:** las fronteras de sesión, de costo y de borrado
-lógico que el informe documenta.
+Corrida 2 (2026-11-03): auditoría acotada, perfil `standard`, sobre las 4
+unidades que la corrida 1 dejó diferidas. Informe en
+`~/security-audit-skill/sistema-geologico-epn/run-2/`. La cobertura de ese
+alcance quedó completa (un crítico de cierre independiente lo confirmó).
+Agrega tres hallazgos bajos, confirmados y verificados dos veces:
+
+- **Bajo:** una edición concurrente de un elemento (PUT de un Invitado)
+  deshace en silencio el borrado lógico del Admin y borra los datos de quién
+  y cuándo lo borró. Causa: `BaseElementoGeologicoRepository.UpdateAsync`
+  hace `DbSet.Update` de la entidad completa y no hay token de concurrencia.
+- **Bajo:** lo mismo con las fotos, en `FotoElementoRepository.UpdateAsync`.
+- **Bajo:** el detalle de un elemento les lista a los usuarios Free las fotos
+  borradas (descripción y URL). Causa: el `Include` de `Galeria.Fotos` no
+  filtra por estado.
+
+Sin hallazgo nuevo, pero con datos útiles para corregir:
+
+- La regex de `NoInjection` sobre los DTO autenticados tiene la misma causa
+  raíz que en la corrida 1, y agregar `StringLength` no la corrige: el arreglo
+  va dentro del atributo.
+- `xlsx` 0.18.5 sí contamina `Object.prototype.c`, pero en la app no hay
+  código que aproveche eso; conviene actualizarlo a SheetJS ≥ 0.20.2.
+
+**Problema que resolvería:** las fronteras de sesión, de costo, de
+concurrencia y de borrado lógico que documentan los dos informes.
 
 **Propuesta inicial:** la corrección mínima de cada hallazgo está en
 `REPORT.md` y `FINDINGS-DETAIL.md`. Después, una corrida `standard` que

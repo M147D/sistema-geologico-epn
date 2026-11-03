@@ -56,7 +56,7 @@ Pending improvements (`docs/pendientes.md`; an item is never deleted when done �
 - PEN-09 — Catalog database engine: consolidated in PostgreSQL. Done 2026-11-03.
 - PEN-10 — Mandatory, explicit configuration at startup. Done 2026-11-03.
 - PEN-11 — Scheduled off-server backups. Pending.
-- PEN-12 — Fix the 2026-11-03 security audit findings (2 medium, 4 low confirmed, 1 needs validation; report outside the repo). Pending.
+- PEN-12 — Fix the 2026-11-03 security audit findings (run 1: 2 medium, 4 low, 1 needs validation; run 2: 3 low; reports outside the repo). Pending.
 
 Artifacts (`docs/artefactos.md`, code in `scripts/artefactos/`):
 
