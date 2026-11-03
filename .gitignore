@@ -370,13 +370,11 @@ FodyWeavers.xsd
 .vscode/tasks.json
 run-project.ps1
 *.sh
-*.md
 *.json
 *.xlsx
 *.csv
 *.pdf
 *.zip
-docs/
 
 # Allow specific frontend stub files for VITE_USE_STUBS feature
 !Cliente_Sistema_Geologia/cliente-sistema-geologico/src/stubs/
