@@ -1,73 +1,32 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace Servidor_Sistema_Geologia.Data;
 
 /// <summary>
-/// Semilla idempotente: roles, superadministrador y filas de referencia
-/// ("Desconocido") que el alta de elementos usa cuando no hay país o provincia.
+/// Semilla idempotente: superadministrador y filas de referencia ("Desconocido").
 /// Se puede ejecutar en cada arranque sin duplicar nada.
+///
+/// El rol vive solo en la columna Usuarios.Rol, que es lo que viaja en el JWT y usa
+/// [Authorize(Roles=...)]. Las tablas de roles de Identity no se usan ni se llenan,
+/// para que no haya una segunda copia del rol (REV-01, H-07).
 /// </summary>
 public static class SeedData
 {
-    public const string PaisDesconocido = "Desconocido";
-    public const string ProvinciaDesconocida = "Desconocida";
-
-    private static readonly string[] Roles = { "Admin", "Premium", "Free", "Invitado" };
-
     public static async Task InitializeAsync(IServiceProvider services, ILogger logger)
     {
         var context = services.GetRequiredService<SistemaGeologicoDbContext>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
         var userManager = services.GetRequiredService<UserManager<Usuario>>();
         var configuration = services.GetRequiredService<IConfiguration>();
 
-        foreach (var role in Roles)
+        var ubicaciones = new Repositories.Implementation.UbicacionRepository(context);
+        await ubicaciones.ObtenerProvinciaDesconocidaGlobalAsync();
+        if (context.ChangeTracker.HasChanges())
         {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                await roleManager.CreateAsync(new IdentityRole<int>(role));
-                logger.LogInformation("Rol {Role} creado", role);
-            }
+            await context.SaveChangesAsync();
+            logger.LogInformation("País y provincia de referencia 'Desconocido' creados");
         }
 
-        await EnsureUbicacionDesconocidaAsync(context, logger);
         await EnsureSuperAdminAsync(userManager, configuration, logger);
-    }
-
-    /// <summary>
-    /// Devuelve los ids del país "Desconocido" y de su provincia "Desconocida",
-    /// creándolos si no existen.
-    /// </summary>
-    public static async Task<(int PaisId, int ProvinciaId)> EnsureUbicacionDesconocidaAsync(
-        SistemaGeologicoDbContext context, ILogger? logger = null)
-    {
-        var pais = await context.Paises.FirstOrDefaultAsync(p => p.NombrePais == PaisDesconocido);
-        if (pais == null)
-        {
-            pais = new Pais { NombrePais = PaisDesconocido, EstadoActivo = true, FechaCreacion = DateTime.Now };
-            context.Paises.Add(pais);
-            await context.SaveChangesAsync();
-            logger?.LogInformation("País de referencia {Pais} creado con id {Id}", PaisDesconocido, pais.Id);
-        }
-
-        var provincia = await context.Provincias
-            .FirstOrDefaultAsync(p => p.NombreProvincia == ProvinciaDesconocida && p.PaisId == pais.Id);
-        if (provincia == null)
-        {
-            provincia = new Provincia
-            {
-                NombreProvincia = ProvinciaDesconocida,
-                PaisId = pais.Id,
-                EstadoActivo = true,
-                FechaCreacion = DateTime.Now
-            };
-            context.Provincias.Add(provincia);
-            await context.SaveChangesAsync();
-            logger?.LogInformation("Provincia de referencia {Provincia} creada con id {Id}", ProvinciaDesconocida, provincia.Id);
-        }
-
-        return (pais.Id, provincia.Id);
     }
 
     private static async Task EnsureSuperAdminAsync(
@@ -81,13 +40,8 @@ public static class SeedData
             return;
         }
 
-        var existing = await userManager.FindByEmailAsync(email);
-        if (existing != null)
-        {
-            if (!await userManager.IsInRoleAsync(existing, "Admin"))
-                await userManager.AddToRoleAsync(existing, "Admin");
-            return;
-        }
+        if (await userManager.FindByEmailAsync(email) != null)
+            return; // ya existe: no se toca su rol ni su estado
 
         var admin = new Usuario
         {
@@ -108,7 +62,6 @@ public static class SeedData
             return;
         }
 
-        await userManager.AddToRoleAsync(admin, "Admin");
         logger.LogInformation("Superadministrador {Email} creado", email);
     }
 }

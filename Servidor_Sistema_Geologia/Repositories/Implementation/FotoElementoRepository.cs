@@ -24,8 +24,9 @@ public class FotoElementoRepository : IFotoElementoRepository
     public async Task<IEnumerable<FotoElemento>> GetByGaleriaIdAsync(int galeriaId)
     {
         return await _context.FotosElementos
-            .Include(f => f.Galeria)
+            .AsNoTracking()
             .Where(f => f.GaleriaElementosGeologicoId == galeriaId)
+            .Select(FotoProyecciones.SinImagen)
             .ToListAsync();
     }
 
@@ -98,8 +99,8 @@ public class FotoElementoRepository : IFotoElementoRepository
     public async Task<(int? galeriaId, IEnumerable<FotoElemento> fotos)?> GetGaleriaConFotosAsync(int elementoId, bool soloActivos)
     {
         var elemento = await _context.ElementosGeologicos
+            .AsNoTracking()
             .Include(e => e.Galeria)
-                .ThenInclude(g => g!.Fotos)
             .FirstOrDefaultAsync(e => e.Id == elementoId && e.EstadoActivo);
 
         if (elemento == null) return null;
@@ -107,8 +108,12 @@ public class FotoElementoRepository : IFotoElementoRepository
         if (elemento.Galeria == null)
             return ((int?)null, Enumerable.Empty<FotoElemento>());
 
-        var fotos = (elemento.Galeria.Fotos ?? new List<FotoElemento>())
-            .Where(f => !soloActivos || f.EstadoActivo);
+        // Solo metadatos: la columna imagen no se lee (REV-01, H-09).
+        var fotos = await _context.FotosElementos
+            .AsNoTracking()
+            .Where(f => f.GaleriaElementosGeologicoId == elemento.Galeria.Id && (!soloActivos || f.EstadoActivo))
+            .Select(FotoProyecciones.SinImagen)
+            .ToListAsync();
 
         return ((int?)elemento.Galeria.Id, fotos);
     }

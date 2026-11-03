@@ -19,8 +19,9 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
         IMineralRepository repository,
         IElementoGeologicoRepository historialRepository,
         ILogger<BaseElementoGeologicoService<Mineral, CreateMineralDto, UpdateMineralDto>> logger,
-        SistemaGeologicoDbContext context)
-        : base(repository, logger, context)
+        IUbicacionRepository ubicaciones,
+        IUnitOfWork unitOfWork)
+        : base(repository, logger, ubicaciones, unitOfWork)
     {
         _mineralRepository = repository;
         _historialRepository = historialRepository;
@@ -70,34 +71,8 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
 
     protected override async Task<Mineral> MapCreateDtoToEntityAsync(CreateMineralDto createDto)
     {
-        // 🌍 Crear ubicación automáticamente si se proporcionan datos de ubicación
-        Ubicacion? ubicacion = null;
-        if (createDto.UbicacionId.HasValue)
-        {
-            // Usar ubicación existente
-            ubicacion = await _context.Ubicaciones.FindAsync(createDto.UbicacionId.Value);
-        }
-        else if (!string.IsNullOrWhiteSpace(createDto.Latitud) || !string.IsNullOrWhiteSpace(createDto.Longitud))
-        {
-            // Crear nueva ubicación automáticamente con manejo de transacciones
-            Pais? pais = null;
-            Provincia? provincia = null;
-            
-            // Step 1: Create or get País first
-            if (!string.IsNullOrWhiteSpace(createDto.NombrePais))
-            {
-                pais = await ObtenerOCrearPaisAsync(createDto.NombrePais);
-            }
-            
-            // Step 2: Create or get Provincia only if País exists
-            if (pais != null && !string.IsNullOrWhiteSpace(createDto.NombreProvincia))
-            {
-                provincia = await ObtenerOCrearProvinciaAsync(createDto.NombreProvincia, pais.Id);
-            }
-            
-            // Step 3: Create Ubicación with the IDs we have
-            ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
-        }
+        // Ubicación como grafo: se inserta con el elemento en un solo SaveChanges.
+        var ubicacion = await ResolverUbicacionAsync(createDto);
 
         return new Mineral
         {
@@ -109,7 +84,7 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
             Ejemplares = createDto.Ejemplares,
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
-            UbicacionId = ubicacion?.Id ?? 1, // Default if no location
+            Ubicacion = ubicacion, // sin id literal por defecto (REV-01, H-03)
             // Nota: GaleriaElementosGeologicoId ya no existe - la relación ahora es Galeria -> Elemento
 
             // Mineral-specific properties
@@ -145,6 +120,19 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
         return Task.CompletedTask;
     }
 
+    protected override void ActualizarDesdeCreateDto(CreateMineralDto dto, Mineral mineral)
+    {
+        mineral.Nombre = dto.Nombre;
+        mineral.Edad = dto.Edad;
+        mineral.Donante = dto.Donante;
+        mineral.FechaIngreso = dto.FechaIngreso ?? mineral.FechaIngreso;
+        mineral.Ejemplares = dto.Ejemplares;
+        mineral.DocumentosRelacionados = dto.DocumentosRelacionados;
+        mineral.LaminaExiste = dto.LaminaExiste;
+        mineral.TipoMineral = dto.TipoMineral;
+        mineral.Litologia = dto.Litologia;
+    }
+
     protected override ElementoGeologicoDetailDto MapToDetailDto(Mineral mineral)
     {
         return new ElementoGeologicoDetailDto
@@ -175,7 +163,7 @@ public class MineralService : BaseElementoGeologicoService<Mineral, CreateMinera
                 Longitud = mineral.Ubicacion.Longitud,
                 Localidad = mineral.Ubicacion.Localidad,
                 Leyenda = mineral.Ubicacion.Leyenda,
-                PaisId = mineral.Ubicacion.PaisId,
+                PaisId = mineral.Ubicacion.Provincia?.PaisId,
                 ProvinciaId = mineral.Ubicacion.ProvinciaId,
                 EstadoActivo = mineral.Ubicacion.EstadoActivo,
                 FechaCreacion = mineral.Ubicacion.FechaCreacion,

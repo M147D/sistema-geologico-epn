@@ -143,7 +143,7 @@ public class ElementoGeologicoService : IElementoGeologicoService
                 Localidad = elemento.Ubicacion.Localidad,
                 Leyenda = elemento.Ubicacion.Leyenda,
                 EstadoActivo = elemento.Ubicacion.EstadoActivo,
-                NombrePais = elemento.Ubicacion.Pais?.NombrePais,
+                NombrePais = elemento.Ubicacion.Provincia?.Pais?.NombrePais,
                 NombreProvincia = elemento.Ubicacion.Provincia?.NombreProvincia
             };
         }

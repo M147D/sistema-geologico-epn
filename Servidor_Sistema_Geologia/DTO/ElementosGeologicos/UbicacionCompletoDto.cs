@@ -24,15 +24,15 @@ public class UbicacionCompletoDto
     [NoInjection]
     public string Localidad { get; set; } = string.Empty;
 
-    [Required]
+    // Grados decimales; vacío si se desconoce (REV-01, H-06).
     [StringLength(60)]
-    [NoInjection]
-    public string Latitud { get; set; } = "0.0";
+    [Coordenada(-90, 90)]
+    public string? Latitud { get; set; }
 
-    [Required]
+    // Grados decimales; vacío si se desconoce (REV-01, H-06).
     [StringLength(60)]
-    [NoInjection]
-    public string Longitud { get; set; } = "0.0";
+    [Coordenada(-180, 180)]
+    public string? Longitud { get; set; }
 
     [StringLength(60)]
     [NoInjection]

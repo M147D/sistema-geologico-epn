@@ -118,8 +118,9 @@ const FormElement = ({ tipo, crearElemento, loading }) => {
         nombrePais: data.nombrePais || "",
         nombreProvincia: data.nombreProvincia || null,
         localidad: data.localidad || "Desconocida",
-        latitud: data.latitud?.toString() || "0.0",
-        longitud: data.longitud?.toString() || "0.0",
+        // Vacío = coordenada desconocida (el servidor la guarda como NULL).
+        latitud: data.latitud?.toString().trim() || "",
+        longitud: data.longitud?.toString().trim() || "",
         leyenda: data.leyenda || "Sin leyenda"
       }
     };

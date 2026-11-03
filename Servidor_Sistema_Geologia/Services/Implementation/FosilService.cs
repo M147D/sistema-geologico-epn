@@ -19,8 +19,9 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
         IFosilRepository repository,
         IElementoGeologicoRepository historialRepository,
         ILogger<BaseElementoGeologicoService<Fosil, CreateFosilDto, UpdateFosilDto>> logger,
-        SistemaGeologicoDbContext context)
-        : base(repository, logger, context)
+        IUbicacionRepository ubicaciones,
+        IUnitOfWork unitOfWork)
+        : base(repository, logger, ubicaciones, unitOfWork)
     {
         _fosilRepository = repository;
         _historialRepository = historialRepository;
@@ -80,34 +81,8 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
 
     protected override async Task<Fosil> MapCreateDtoToEntityAsync(CreateFosilDto createDto)
     {
-        // 🌍 Crear ubicación automáticamente si se proporcionan datos de ubicación
-        Ubicacion? ubicacion = null;
-        if (createDto.UbicacionId.HasValue)
-        {
-            // Usar ubicación existente
-            ubicacion = await _context.Ubicaciones.FindAsync(createDto.UbicacionId.Value);
-        }
-        else if (!string.IsNullOrWhiteSpace(createDto.Latitud) || !string.IsNullOrWhiteSpace(createDto.Longitud))
-        {
-            // Crear nueva ubicación automáticamente con manejo de transacciones
-            Pais? pais = null;
-            Provincia? provincia = null;
-            
-            // Step 1: Create or get País first
-            if (!string.IsNullOrWhiteSpace(createDto.NombrePais))
-            {
-                pais = await ObtenerOCrearPaisAsync(createDto.NombrePais);
-            }
-            
-            // Step 2: Create or get Provincia only if País exists
-            if (pais != null && !string.IsNullOrWhiteSpace(createDto.NombreProvincia))
-            {
-                provincia = await ObtenerOCrearProvinciaAsync(createDto.NombreProvincia, pais.Id);
-            }
-            
-            // Step 3: Create Ubicación with the IDs we have
-            ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
-        }
+        // Ubicación como grafo: se inserta con el elemento en un solo SaveChanges.
+        var ubicacion = await ResolverUbicacionAsync(createDto);
 
         return new Fosil
         {
@@ -119,7 +94,7 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
             Ejemplares = createDto.Ejemplares,
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
-            UbicacionId = ubicacion?.Id ?? 1, // Default if no location
+            Ubicacion = ubicacion, // sin id literal por defecto (REV-01, H-03)
             // Nota: GaleriaElementosGeologicoId ya no existe - la relación ahora es Galeria -> Elemento
 
             // Fossil-specific properties
@@ -157,6 +132,20 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
         return Task.CompletedTask;
     }
 
+    protected override void ActualizarDesdeCreateDto(CreateFosilDto dto, Fosil fosil)
+    {
+        fosil.Nombre = dto.Nombre;
+        fosil.Edad = dto.Edad;
+        fosil.Donante = dto.Donante;
+        fosil.FechaIngreso = dto.FechaIngreso ?? fosil.FechaIngreso;
+        fosil.Ejemplares = dto.Ejemplares;
+        fosil.DocumentosRelacionados = dto.DocumentosRelacionados;
+        fosil.LaminaExiste = dto.LaminaExiste;
+        fosil.TipoFosil = dto.TipoFosil;
+        fosil.Especie = dto.Especie;
+        fosil.Periodo = dto.Periodo;
+    }
+
     protected override ElementoGeologicoDetailDto MapToDetailDto(Fosil fosil)
     {
         return new ElementoGeologicoDetailDto
@@ -187,7 +176,7 @@ public class FosilService : BaseElementoGeologicoService<Fosil, CreateFosilDto, 
                 Longitud = fosil.Ubicacion.Longitud,
                 Localidad = fosil.Ubicacion.Localidad,
                 Leyenda = fosil.Ubicacion.Leyenda,
-                PaisId = fosil.Ubicacion.PaisId,
+                PaisId = fosil.Ubicacion.Provincia?.PaisId,
                 ProvinciaId = fosil.Ubicacion.ProvinciaId,
                 EstadoActivo = fosil.Ubicacion.EstadoActivo,
                 FechaCreacion = fosil.Ubicacion.FechaCreacion,

@@ -96,15 +96,7 @@ public class SistemaGeologicoDbContext : IdentityDbContext<Usuario, Microsoft.As
 			.HasForeignKey(f => f.GaleriaElementosGeologicoId)
 			.OnDelete(DeleteBehavior.Cascade);
 
-		// Configuración para Ubicacion
-		// Relación directa con País (para casos donde no se conoce la provincia)
-		modelBuilder.Entity<Ubicacion>()
-			.HasOne(u => u.Pais)
-			.WithMany()
-			.HasForeignKey(u => u.PaisId)
-			.OnDelete(DeleteBehavior.Restrict);
-
-		// Relación con Provincia (opcional, más específica)
+		// Ubicacion -> Provincia -> Pais: el país sale de la provincia (REV-01, H-05).
 		modelBuilder.Entity<Ubicacion>()
 			.HasOne(u => u.Provincia)
 			.WithMany(p => p.Ubicaciones)
@@ -386,10 +378,15 @@ public class SistemaGeologicoDbContext : IdentityDbContext<Usuario, Microsoft.As
 			entity.Property(e => e.FechaEliminacion).HasColumnName("fechaEliminacion");
 			entity.Property(e => e.UsuarioEliminacionId).HasColumnName("usuarioEliminacionId");
 			entity.Property(e => e.EstadoActivo).HasColumnName("estadoActivo");
-			entity.Property(e => e.PaisId).HasColumnName("paisId");
 			entity.Property(e => e.ProvinciaId).HasColumnName("provinciaId");
 			entity.Property(e => e.Latitud).HasColumnName("latitud");
 			entity.Property(e => e.Longitud).HasColumnName("longitud");
+			// Coordenadas numéricas con rango (REV-01, H-06).
+			entity.ToTable(t =>
+			{
+				t.HasCheckConstraint("CK_Ubicaciones_Latitud", "latitud IS NULL OR (latitud >= -90 AND latitud <= 90)");
+				t.HasCheckConstraint("CK_Ubicaciones_Longitud", "longitud IS NULL OR (longitud >= -180 AND longitud <= 180)");
+			});
 			entity.Property(e => e.Localidad).HasColumnName("localidad");
 			entity.Property(e => e.Leyenda).HasColumnName("leyenda");
 		});

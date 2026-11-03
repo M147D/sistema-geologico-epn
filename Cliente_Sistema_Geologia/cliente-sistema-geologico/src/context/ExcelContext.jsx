@@ -75,7 +75,6 @@ const buildElementData = (row, tipo, index) => {
     ejemplares: parseInt(row.ejemplares) || 1,
     laminaExiste: row.laminaExiste === 'true' || row.laminaExiste === true || false,
     documentosRelacionados: row.documentosRelacionados ? String(row.documentosRelacionados).trim() : '',
-    usuarioId: 1,
     ubicacion: {
       nombrePais: row.nombrePais || '',
       nombreProvincia: row.nombreProvincia || '',
@@ -92,7 +91,7 @@ const buildElementData = (row, tipo, index) => {
 };
 
 export const ExcelProvider = ({ children }) => {
-  const { crearElemento, actualizarElemento, buscarPorCodigo } = useElementos();
+  const { cargarLoteElementos } = useElementos();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
@@ -116,43 +115,30 @@ export const ExcelProvider = ({ children }) => {
     reader.readAsBinaryString(file);
   });
 
+  // Todas las filas en una sola petición: si alguna falla, no se guarda ninguna
+  // y se muestran los errores por fila (REV-01, H-14).
   const saveToDatabase = async (tipoElemento) => {
     setLoading(true);
     const tipoNombre = tipoElemento === 'fosil' ? 'fósiles' : tipoElemento === 'mineral' ? 'minerales' : 'rocas';
-    setProcessingStatus(`Guardando ${tipoNombre} en la base de datos...`);
-
-    let createCount = 0, updateCount = 0, errorCount = 0, lastError = '';
-
-    for (let i = 0; i < data.length; i++) {
-      try {
-        const elementData = buildElementData(data[i], tipoElemento, i);
-        const existing = await buscarPorCodigo(elementData.codigo);
-
-        if (existing.exists) {
-          const { ubicacion, usuarioId, ...updateData } = elementData;
-          if (existing.tipo === tipoElemento) {
-            await actualizarElemento(existing.id, updateData, existing.tipo);
-            updateCount++;
-          } else {
-            elementData.codigo = elementData.codigo + '.D' + String(i + 1);
-            await crearElemento(elementData, tipoElemento);
-            createCount++;
-          }
-        } else {
-          await crearElemento(elementData, tipoElemento);
-          createCount++;
-        }
-      } catch (error) {
-        errorCount++;
-        const errorMsg = error?.response?.data?.message || error?.response?.data?.errors || error?.message || 'Error desconocido';
-        lastError = typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg;
+    setProcessingStatus(`Guardando ${data.length} ${tipoNombre} en la base de datos...`);
+    try {
+      const filas = data.map((row, i) => buildElementData(row, tipoElemento, i));
+      const r = await cargarLoteElementos(tipoElemento, filas);
+      if (r.success) {
+        setProcessingStatus(`Completado: ${r.creados} creados, ${r.actualizados} actualizados, 0 errores`);
+      } else {
+        const detalle = r.errores.slice(0, 5)
+          .map(e => (e.fila ? `fila ${e.fila}${e.codigo ? ` (${e.codigo})` : ''}: ` : '') + e.mensaje)
+          .join('; ');
+        const extra = r.errores.length > 5 ? ` y ${r.errores.length - 5} más` : '';
+        setProcessingStatus(`No se guardó ninguna fila: ${r.errores.length} error(es). ${detalle}${extra}`);
       }
-      setProcessingStatus(`Procesando: ${i + 1}/${data.length} - ${createCount} creados, ${updateCount} actualizados, ${errorCount} errores`);
+    } catch (error) {
+      const msg = error?.response?.data?.message || error?.message || 'Error desconocido';
+      setProcessingStatus(`No se guardó ninguna fila: ${msg}`);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-    const statusMsg = `Completado: ${createCount} creados, ${updateCount} actualizados, ${errorCount} errores`;
-    setProcessingStatus(errorCount > 0 ? `${statusMsg}. Ultimo error: ${lastError}` : statusMsg);
   };
 
   const resetData = () => {

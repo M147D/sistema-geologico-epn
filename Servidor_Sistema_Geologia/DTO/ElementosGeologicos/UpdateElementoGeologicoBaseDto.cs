@@ -56,11 +56,11 @@ public abstract class UpdateElementoGeologicoBaseDto
     public string? Localidad { get; set; }
 
     [StringLength(60)]
-    [NoInjection]
+    [Coordenada(-90, 90)]
     public string? Latitud { get; set; }
 
     [StringLength(60)]
-    [NoInjection]
+    [Coordenada(-180, 180)]
     public string? Longitud { get; set; }
 
     public int UsuarioId { get; set; } // Para el historial de acceso

@@ -94,7 +94,7 @@ public class RocaRepository : BaseElementoGeologicoRepository<Roca>, IRocaReposi
             // Ubicacion info
             UbicacionId = roca.UbicacionId,
             Localidad = roca.Ubicacion?.Localidad,
-            NombrePais = roca.Ubicacion?.Pais?.NombrePais,
+            NombrePais = roca.Ubicacion?.Provincia?.Pais?.NombrePais,
             NombreProvincia = roca.Ubicacion?.Provincia?.NombreProvincia,
             Latitud = roca.Ubicacion?.Latitud,
             Longitud = roca.Ubicacion?.Longitud,

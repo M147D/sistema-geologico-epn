@@ -19,7 +19,10 @@ public interface IBaseElementoGeologicoRepository<T> where T : ElementoGeologico
     Task<T> CreateAsync(T elemento);
     Task<T> UpdateAsync(T elemento);
     Task<bool> DeleteAsync(int id);
-    Task<bool> RestoreAsync(int id);
+    Task<bool> RestoreAsync(int id, int? usuarioId = null);
+
+    /// <summary>Cualquier elemento (de cualquier tipo, activo o no) con ese código; para la carga masiva.</summary>
+    Task<ElementoGeologico?> FindAnyByCodigoAsync(string codigo);
     
     // ✅ VALIDACIONES
     Task<bool> ExistsAsync(int id);

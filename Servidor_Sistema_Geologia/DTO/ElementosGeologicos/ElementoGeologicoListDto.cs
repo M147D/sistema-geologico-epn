@@ -22,8 +22,8 @@ public class ElementoGeologicoListDto
     public string? Localidad { get; set; }
     public string? NombrePais { get; set; }
     public string? NombreProvincia { get; set; }
-    public string? Latitud { get; set; }
-    public string? Longitud { get; set; }
+    public double? Latitud { get; set; }
+    public double? Longitud { get; set; }
     
     // Información específica por tipo
     public string? TipoEspecifico { get; set; } // "Vertebrado", "Silicato", "Ígnea", etc.

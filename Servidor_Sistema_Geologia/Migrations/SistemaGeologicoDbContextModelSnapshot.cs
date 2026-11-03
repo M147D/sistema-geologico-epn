@@ -535,10 +535,8 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
-                    b.Property<string>("Latitud")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
+                    b.Property<double?>("Latitud")
+                        .HasColumnType("double precision")
                         .HasColumnName("latitud");
 
                     b.Property<string>("Leyenda")
@@ -553,15 +551,9 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("localidad");
 
-                    b.Property<string>("Longitud")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
+                    b.Property<double?>("Longitud")
+                        .HasColumnType("double precision")
                         .HasColumnName("longitud");
-
-                    b.Property<int>("PaisId")
-                        .HasColumnType("integer")
-                        .HasColumnName("paisId");
 
                     b.Property<int>("ProvinciaId")
                         .HasColumnType("integer")
@@ -581,8 +573,6 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PaisId");
-
                     b.HasIndex("ProvinciaId");
 
                     b.HasIndex("UsuarioActualizacionId");
@@ -591,7 +581,12 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.HasIndex("UsuarioEliminacionId");
 
-                    b.ToTable("tb_Ubicaciones", (string)null);
+                    b.ToTable("tb_Ubicaciones", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Ubicaciones_Latitud", "latitud IS NULL OR (latitud >= -90 AND latitud <= 90)");
+
+                            t.HasCheckConstraint("CK_Ubicaciones_Longitud", "longitud IS NULL OR (longitud >= -180 AND longitud <= 180)");
+                        });
                 });
 
             modelBuilder.Entity("Servidor_Sistema_Geologia.Usuario", b =>
@@ -940,12 +935,6 @@ namespace Servidor_Sistema_Geologia.Migrations
 
             modelBuilder.Entity("Servidor_Sistema_Geologia.Ubicacion", b =>
                 {
-                    b.HasOne("Servidor_Sistema_Geologia.Pais", "Pais")
-                        .WithMany()
-                        .HasForeignKey("PaisId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Servidor_Sistema_Geologia.Provincia", "Provincia")
                         .WithMany("Ubicaciones")
                         .HasForeignKey("ProvinciaId")
@@ -966,8 +955,6 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .WithMany()
                         .HasForeignKey("UsuarioEliminacionId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Pais");
 
                     b.Navigation("Provincia");
 

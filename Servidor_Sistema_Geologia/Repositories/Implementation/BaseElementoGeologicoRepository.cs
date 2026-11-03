@@ -36,17 +36,31 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
 
     public virtual async Task<T?> GetByIdWithDetailsAsync(int id)
     {
-        return await _context.ElementosGeologicos
+        var elemento = await _context.ElementosGeologicos
             .OfType<T>()
+            .AsNoTracking()
             .Include(e => e.Ubicacion)
                 .ThenInclude(u => u!.Provincia)
                     .ThenInclude(p => p!.Pais)
             .Include(e => e.Galeria)
-                .ThenInclude(g => g!.Fotos)
             .Include(e => e.UsuarioCreacion)
             .Include(e => e.UsuarioActualizacion)
             .Include(e => e.UsuarioEliminacion)
             .FirstOrDefaultAsync(e => e.Id == id && e.EstadoActivo);
+
+        await CargarFotosSinImagenAsync(elemento?.Galeria);
+        return elemento;
+    }
+
+    /// <summary>Metadatos de las fotos de la galería, sin leer los bytes (REV-01, H-09).</summary>
+    protected async Task CargarFotosSinImagenAsync(Galeria.GaleriaElementoGeologico? galeria)
+    {
+        if (galeria == null) return;
+        galeria.Fotos = await _context.FotosElementos
+            .AsNoTracking()
+            .Where(f => f.GaleriaElementosGeologicoId == galeria.Id)
+            .Select(FotoProyecciones.SinImagen)
+            .ToListAsync();
     }
 
     public virtual async Task<IEnumerable<T>> GetAllActiveAsync()
@@ -189,7 +203,7 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
         return true;
     }
 
-    public virtual async Task<bool> RestoreAsync(int id)
+    public virtual async Task<bool> RestoreAsync(int id, int? usuarioId = null)
     {
         var elemento = await _context.Set<T>()
             .FirstOrDefaultAsync(e => e.Id == id);
@@ -197,7 +211,10 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
         if (elemento == null) return false;
 
         elemento.EstadoActivo = true;
+        elemento.FechaEliminacion = null;
+        elemento.UsuarioEliminacionId = null;
         elemento.FechaActualizacion = DateTime.Now;
+        if (usuarioId.HasValue) elemento.UsuarioActualizacionId = usuarioId.Value;
         
         await _context.SaveChangesAsync();
         
@@ -206,6 +223,9 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
         
         return true;
     }
+
+    public virtual async Task<ElementoGeologico?> FindAnyByCodigoAsync(string codigo) =>
+        await _context.ElementosGeologicos.FirstOrDefaultAsync(e => e.Codigo == codigo);
 
     // ✅ VALIDACIONES
     public virtual async Task<bool> ExistsAsync(int id)

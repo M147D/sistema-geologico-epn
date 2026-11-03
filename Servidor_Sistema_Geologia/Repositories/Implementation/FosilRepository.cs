@@ -102,7 +102,7 @@ public class FosilRepository : BaseElementoGeologicoRepository<Fosil>, IFosilRep
             // Ubicacion info
             UbicacionId = fosil.UbicacionId,
             Localidad = fosil.Ubicacion?.Localidad,
-            NombrePais = fosil.Ubicacion?.Pais?.NombrePais,
+            NombrePais = fosil.Ubicacion?.Provincia?.Pais?.NombrePais,
             NombreProvincia = fosil.Ubicacion?.Provincia?.NombreProvincia,
             Latitud = fosil.Ubicacion?.Latitud,
             Longitud = fosil.Ubicacion?.Longitud,

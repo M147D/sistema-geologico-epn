@@ -24,15 +24,24 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
 
     public async Task<ElementoGeologico?> GetByIdWithDetailsAsync(int id)
     {
-        return await _context.ElementosGeologicos
+        var elemento = await _context.ElementosGeologicos
+            .AsNoTracking()
             .Include(e => e.Ubicacion)
                 .ThenInclude(u => u!.Provincia)
                 .ThenInclude(p => p!.Pais)
-            .Include(e => e.Ubicacion)
-                .ThenInclude(u => u!.Provincia)
             .Include(e => e.Galeria)
-                .ThenInclude(g => g!.Fotos)
             .FirstOrDefaultAsync(e => e.Id == id);
+
+        // Metadatos de fotos sin la columna imagen (REV-01, H-09).
+        if (elemento?.Galeria != null)
+        {
+            elemento.Galeria.Fotos = await _context.FotosElementos
+                .AsNoTracking()
+                .Where(f => f.GaleriaElementosGeologicoId == elemento.Galeria.Id)
+                .Select(FotoProyecciones.SinImagen)
+                .ToListAsync();
+        }
+        return elemento;
     }
 
     public async Task<ElementoGeologico?> GetByCodigoAsync(string codigo)
@@ -247,7 +256,7 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
                 
                 // Información de ubicación
                 Localidad = e.Ubicacion != null ? e.Ubicacion.Localidad : null,
-                NombrePais = e.Ubicacion != null && e.Ubicacion.Pais != null ? e.Ubicacion.Pais.NombrePais : null,
+                NombrePais = e.Ubicacion != null && e.Ubicacion.Provincia != null && e.Ubicacion.Provincia.Pais != null ? e.Ubicacion.Provincia.Pais.NombrePais : null,
                 NombreProvincia = e.Ubicacion != null && e.Ubicacion.Provincia != null ? e.Ubicacion.Provincia.NombreProvincia : null,
                 Latitud = e.Ubicacion != null ? e.Ubicacion.Latitud : null,
                 Longitud = e.Ubicacion != null ? e.Ubicacion.Longitud : null,

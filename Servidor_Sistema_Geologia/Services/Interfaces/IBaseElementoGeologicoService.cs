@@ -23,6 +23,9 @@ public interface IBaseElementoGeologicoService<T, TCreateDto, TUpdateDto>
     Task<ElementoGeologicoResponseDto> UpdateAsync(int id, TUpdateDto updateDto, int usuarioId);
     Task<bool> DeleteAsync(int id, int usuarioId);
     Task<bool> RestoreAsync(int id, int usuarioId);
+
+    /// <summary>Carga masiva en una transacción: todas las filas o ninguna.</summary>
+    Task<LoteResultadoDto> CargarLoteAsync(IReadOnlyList<TCreateDto> filas, int usuarioId);
     
     // ✅ VALIDACIONES
     Task<bool> ExistsAsync(int id);

@@ -153,6 +153,20 @@ export const ElementosProvider = ({ children }) => {
 
   // --- Escritura: Elementos ---
 
+  // Carga masiva (Excel): una sola petición, el servidor guarda todo o nada.
+  const cargarLoteElementos = useCallback(async (tipo, filas) => {
+    if (!isAuthenticated) throw new Error('Usuario no autenticado');
+    setLoading(true);
+    setError(null);
+    try {
+      const resultado = await elementosService.cargarLote(tipo, filas);
+      if (resultado.success) await cargarTodosLosElementos(true);
+      return resultado;
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated, elementosService, cargarTodosLosElementos]);
+
   const crearElemento = useCallback(async (elementoData, tipo) => {
     if (!isAuthenticated) throw new Error('Usuario no autenticado');
 
@@ -325,6 +339,7 @@ export const ElementosProvider = ({ children }) => {
 
     // Escritura: Elementos
     crearElemento,
+    cargarLoteElementos,
     actualizarElemento,
     eliminarElemento,
 

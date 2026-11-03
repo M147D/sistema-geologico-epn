@@ -19,8 +19,9 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         IRocaRepository repository,
         IElementoGeologicoRepository historialRepository,
         ILogger<BaseElementoGeologicoService<Roca, CreateRocaDto, UpdateRocaDto>> logger,
-        SistemaGeologicoDbContext context)
-        : base(repository, logger, context)
+        IUbicacionRepository ubicaciones,
+        IUnitOfWork unitOfWork)
+        : base(repository, logger, ubicaciones, unitOfWork)
     {
         _rocaRepository = repository;
         _historialRepository = historialRepository;
@@ -64,34 +65,8 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
 
     protected override async Task<Roca> MapCreateDtoToEntityAsync(CreateRocaDto createDto)
     {
-        // 🌍 Crear ubicación automáticamente si se proporcionan datos de ubicación
-        Ubicacion? ubicacion = null;
-        if (createDto.UbicacionId.HasValue)
-        {
-            // Usar ubicación existente
-            ubicacion = await _context.Ubicaciones.FindAsync(createDto.UbicacionId.Value);
-        }
-        else if (!string.IsNullOrWhiteSpace(createDto.Latitud) || !string.IsNullOrWhiteSpace(createDto.Longitud))
-        {
-            // Crear nueva ubicación automáticamente con manejo de transacciones
-            Pais? pais = null;
-            Provincia? provincia = null;
-            
-            // Step 1: Create or get País first
-            if (!string.IsNullOrWhiteSpace(createDto.NombrePais))
-            {
-                pais = await ObtenerOCrearPaisAsync(createDto.NombrePais);
-            }
-            
-            // Step 2: Create or get Provincia only if País exists
-            if (pais != null && !string.IsNullOrWhiteSpace(createDto.NombreProvincia))
-            {
-                provincia = await ObtenerOCrearProvinciaAsync(createDto.NombreProvincia, pais.Id);
-            }
-            
-            // Step 3: Create Ubicación with the IDs we have
-            ubicacion = await CrearUbicacionAsync(createDto, pais?.Id, provincia?.Id);
-        }
+        // Ubicación como grafo: se inserta con el elemento en un solo SaveChanges.
+        var ubicacion = await ResolverUbicacionAsync(createDto);
 
         return new Roca
         {
@@ -103,7 +78,7 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
             Ejemplares = createDto.Ejemplares,
             DocumentosRelacionados = createDto.DocumentosRelacionados,
             LaminaExiste = createDto.LaminaExiste,
-            UbicacionId = ubicacion?.Id ?? 1, // Default if no location
+            Ubicacion = ubicacion, // sin id literal por defecto (REV-01, H-03)
             // Nota: GaleriaElementosGeologicoId ya no existe - la relación ahora es Galeria -> Elemento
 
             // Rock-specific properties
@@ -139,6 +114,19 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
         return Task.CompletedTask;
     }
 
+    protected override void ActualizarDesdeCreateDto(CreateRocaDto dto, Roca roca)
+    {
+        roca.Nombre = dto.Nombre;
+        roca.Edad = dto.Edad;
+        roca.Donante = dto.Donante;
+        roca.FechaIngreso = dto.FechaIngreso ?? roca.FechaIngreso;
+        roca.Ejemplares = dto.Ejemplares;
+        roca.DocumentosRelacionados = dto.DocumentosRelacionados;
+        roca.LaminaExiste = dto.LaminaExiste;
+        roca.TipoRoca = dto.TipoRoca;
+        roca.Litologia = dto.Litologia;
+    }
+
     protected override ElementoGeologicoDetailDto MapToDetailDto(Roca roca)
     {
         return new ElementoGeologicoDetailDto
@@ -169,7 +157,7 @@ public class RocaService : BaseElementoGeologicoService<Roca, CreateRocaDto, Upd
                 Longitud = roca.Ubicacion.Longitud,
                 Localidad = roca.Ubicacion.Localidad,
                 Leyenda = roca.Ubicacion.Leyenda,
-                PaisId = roca.Ubicacion.PaisId,
+                PaisId = roca.Ubicacion.Provincia?.PaisId,
                 ProvinciaId = roca.Ubicacion.ProvinciaId,
                 EstadoActivo = roca.Ubicacion.EstadoActivo,
                 FechaCreacion = roca.Ubicacion.FechaCreacion,

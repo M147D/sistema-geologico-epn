@@ -289,6 +289,33 @@ public class ElementosGeologicosController : ControllerBase
         }
     }
 
+    // 📦 CARGA MASIVA (Excel): todas las filas o ninguna (REV-01, H-14).
+    [HttpPost("lote/fosiles")]
+    [Authorize(Roles = "Admin")]
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    public Task<ActionResult> CargarLoteFosiles(LoteElementosDto<CreateFosilDto> lote) =>
+        CargarLote(usuarioId => _fosilService.CargarLoteAsync(lote.Filas, usuarioId));
+
+    [HttpPost("lote/minerales")]
+    [Authorize(Roles = "Admin")]
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    public Task<ActionResult> CargarLoteMinerales(LoteElementosDto<CreateMineralDto> lote) =>
+        CargarLote(usuarioId => _mineralService.CargarLoteAsync(lote.Filas, usuarioId));
+
+    [HttpPost("lote/rocas")]
+    [Authorize(Roles = "Admin")]
+    [RequestSizeLimit(20 * 1024 * 1024)]
+    public Task<ActionResult> CargarLoteRocas(LoteElementosDto<CreateRocaDto> lote) =>
+        CargarLote(usuarioId => _rocaService.CargarLoteAsync(lote.Filas, usuarioId));
+
+    private async Task<ActionResult> CargarLote(Func<int, Task<LoteResultadoDto>> cargar)
+    {
+        if (!TryGetUsuarioId(out int usuarioId))
+            return Unauthorized("Usuario no autenticado");
+        var resultado = await cargar(usuarioId);
+        return resultado.Success ? Ok(resultado) : BadRequest(resultado);
+    }
+
     /// <summary>
     /// Crea un nuevo mineral
     /// </summary>

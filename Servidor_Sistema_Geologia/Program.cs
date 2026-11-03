@@ -108,6 +108,8 @@ builder.Services.AddScoped<IMineralRepository, MineralRepository>();
 builder.Services.AddScoped<IRocaRepository, RocaRepository>();
 builder.Services.AddScoped<IFotoElementoRepository, FotoElementoRepository>();
 builder.Services.AddScoped<IGeologiaGISRepository, GeologiaGISRepository>();
+builder.Services.AddScoped<IUbicacionRepository, UbicacionRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Servicios
 builder.Services.AddScoped<IAuthService, AuthService>();

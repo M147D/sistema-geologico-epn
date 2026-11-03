@@ -2,19 +2,23 @@
 
 namespace Servidor_Sistema_Geologia;
 
+/// <summary>
+/// Punto y localidad de un elemento geológico.
+/// El país NO se guarda aquí: se obtiene de la provincia (Provincia.Pais), para que
+/// no haya dos fuentes del país (REV-01, H-05). Cada país tiene una provincia
+/// "Desconocida" para los casos en que no se sabe la provincia.
+/// </summary>
 public class Ubicacion : EntidadAuditable
 {
-	// FOREIGN KEYS - Con valores por defecto apuntando a registros "Desconocido"
-	public int PaisId { get; set; } = 1; // País "Desconocido" por defecto
-	public int ProvinciaId { get; set; } = 1; // Provincia "Desconocida" por defecto
+	public int ProvinciaId { get; set; }
 
-	[StringLength(60)]
-	[RegularExpression(@"^-?\d+(\.\d+)?$", ErrorMessage = "La latitud debe ser un número válido.")]
-	public string Latitud { get; set; } = "0.0";
+	/// <summary>Grados decimales WGS84, −90..90. Nulo si no se conoce (REV-01, H-06).</summary>
+	[Range(-90.0, 90.0, ErrorMessage = "La latitud debe estar entre -90 y 90.")]
+	public double? Latitud { get; set; }
 
-	[StringLength(60)]
-	[RegularExpression(@"^-?\d+(\.\d+)?$", ErrorMessage = "La longitud debe ser un número válido.")]
-	public string Longitud { get; set; } = "0.0";
+	/// <summary>Grados decimales WGS84, −180..180. Nulo si no se conoce.</summary>
+	[Range(-180.0, 180.0, ErrorMessage = "La longitud debe estar entre -180 y 180.")]
+	public double? Longitud { get; set; }
 
 	[StringLength(500)]
 	[RegularExpression(@"^[a-zA-Z0-9\s,.-]+$", ErrorMessage = "La localidad solo puede contener letras, números, espacios y algunos caracteres especiales.")]
@@ -25,7 +29,6 @@ public class Ubicacion : EntidadAuditable
 	public string Leyenda { get; set; } = "Sin leyenda";
 
 	// RELACIONES
-	public Pais? Pais { get; set; } // Relación directa con País
-	public Provincia? Provincia { get; set; } // Relación con Provincia
+	public Provincia? Provincia { get; set; }
 	public List<ElementoGeologico> ElementosGeologicos { get; } = new List<ElementoGeologico>();
 }

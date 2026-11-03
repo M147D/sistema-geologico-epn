@@ -108,6 +108,31 @@ export const useElementosService = () => {
     },
 
     /**
+     * Carga masiva en una sola transacción: el servidor guarda todas las filas o ninguna.
+     * @param {'fosil'|'mineral'|'roca'} tipo
+     * @param {object[]} filas - DTOs de creación, uno por fila del Excel
+     * @returns {Promise<{success:boolean,totalFilas:number,creados:number,actualizados:number,errores:{fila:number,codigo?:string,mensaje:string}[]}>}
+     */
+    async cargarLote(tipo, filas) {
+      const ruta = { fosil: 'fosiles', mineral: 'minerales', roca: 'rocas' }[tipo];
+      try {
+        const response = await api.post(`/elementos-geologicos/lote/${ruta}`, { filas });
+        return response.data;
+      } catch (error) {
+        const data = error?.response?.data;
+        if (data && Array.isArray(data.errores)) return data;          // errores de negocio por fila
+        if (data?.errors) {                                              // validación de modelo (400)
+          return { success: false, totalFilas: filas.length, creados: 0, actualizados: 0,
+            errores: Object.entries(data.errors).map(([campo, msgs]) => {
+              const m = /Filas\[(\d+)\]/i.exec(campo);
+              return { fila: m ? Number(m[1]) + 1 : 0, mensaje: `${campo}: ${[].concat(msgs).join(' ')}` };
+            }) };
+        }
+        throw error;
+      }
+    },
+
+    /**
      * Crea un nuevo mineral
      * @param {CreateMineralDto} mineralData - Datos del mineral
      * @returns {Promise<ElementoGeologicoSingleResponseDto>} Mineral creado

@@ -94,7 +94,7 @@ public class MineralRepository : BaseElementoGeologicoRepository<Mineral>, IMine
             // Ubicacion info
             UbicacionId = mineral.UbicacionId,
             Localidad = mineral.Ubicacion?.Localidad,
-            NombrePais = mineral.Ubicacion?.Pais?.NombrePais,
+            NombrePais = mineral.Ubicacion?.Provincia?.Pais?.NombrePais,
             NombreProvincia = mineral.Ubicacion?.Provincia?.NombreProvincia,
             Latitud = mineral.Ubicacion?.Latitud,
             Longitud = mineral.Ubicacion?.Longitud,

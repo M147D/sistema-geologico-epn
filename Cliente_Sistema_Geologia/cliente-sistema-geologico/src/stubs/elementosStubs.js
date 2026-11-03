@@ -157,6 +157,7 @@ export const elementosStubs = {
   createFosil:          () => Promise.resolve(STUB_OK),
   createMineral:        () => Promise.resolve(STUB_OK),
   createRoca:           () => Promise.resolve(STUB_OK),
+  cargarLote:           (_tipo, filas) => Promise.resolve({ success: true, totalFilas: filas.length, creados: filas.length, actualizados: 0, errores: [] }),
   updateFosil:          () => Promise.resolve(STUB_OK),
   updateMineral:        () => Promise.resolve(STUB_OK),
   updateRoca:           () => Promise.resolve(STUB_OK),

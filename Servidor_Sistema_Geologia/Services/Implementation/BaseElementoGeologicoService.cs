@@ -1,7 +1,7 @@
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
+using Servidor_Sistema_Geologia.DTO.Validation;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace Servidor_Sistema_Geologia.Services.Implementation;
 
@@ -20,17 +20,24 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 {
     protected readonly IBaseElementoGeologicoRepository<T> _repository;
     protected readonly ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> _logger;
-    protected readonly SistemaGeologicoDbContext _context;
+    protected readonly IUbicacionRepository _ubicaciones;
+    protected readonly IUnitOfWork _unitOfWork;
     protected abstract string ElementTypeName { get; }
 
+    /// <summary>Máximo de filas por carga masiva (cada fila pasa por validación con regex).</summary>
+    public const int MaxFilasLote = 2000;
+
+    // Servicio sin DbContext: todo acceso a datos pasa por repositorios (REV-01, P-02).
     protected BaseElementoGeologicoService(
         IBaseElementoGeologicoRepository<T> repository,
         ILogger<BaseElementoGeologicoService<T, TCreateDto, TUpdateDto>> logger,
-        SistemaGeologicoDbContext context)
+        IUbicacionRepository ubicaciones,
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _logger = logger;
-        _context = context;
+        _ubicaciones = ubicaciones;
+        _unitOfWork = unitOfWork;
     }
 
     // 🔍 CONSULTAS BASICAS
@@ -113,25 +120,10 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
             var elemento = await MapCreateDtoToEntityAsync(createDto);
             elemento.UsuarioCreacionId = usuarioId;
 
-            // Create entity first (must exist before gallery FK)
+            // Elemento, ubicación (con provincia/país nuevos si hacen falta) y galería
+            // se insertan en un solo SaveChanges: o se crean todos o ninguno (REV-01, H-08).
+            elemento.Galeria = NuevaGaleria(elemento.Nombre);
             var createdElemento = await _repository.CreateAsync(elemento);
-
-            // Create gallery after element exists in DB
-            try
-            {
-                var galeria = new Galeria.GaleriaElementoGeologico
-                {
-                    ElementoGeologicoId = createdElemento.Id,
-                    DetalleGrupo = $"Galeria de {createdElemento.Nombre}"
-                };
-                await _context.GaleriaElementosGeologicos.AddAsync(galeria);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Creada galeria para elemento ID: {Id}", createdElemento.Id);
-            }
-            catch (Exception exGaleria)
-            {
-                _logger.LogWarning(exGaleria, "No se pudo crear galeria para elemento ID: {Id}", createdElemento.Id);
-            }
 
             var elementoDto = MapToDetailDto(createdElemento);
 
@@ -238,22 +230,10 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
     {
         try
         {
-            var elemento = await _context.Set<T>().FirstOrDefaultAsync(e => e.Id == id);
-            if (elemento == null)
-            {
+            var restaurado = await _repository.RestoreAsync(id, usuarioId);
+            if (!restaurado)
                 _logger.LogWarning("{ElementType} con ID {Id} no encontrado para restauración", ElementTypeName, id);
-                return false;
-            }
-
-            elemento.EstadoActivo = true;
-            elemento.FechaEliminacion = null;
-            elemento.UsuarioEliminacionId = null;
-            elemento.FechaActualizacion = DateTime.Now;
-            elemento.UsuarioActualizacionId = usuarioId;
-
-            await _context.SaveChangesAsync();
-
-            return true;
+            return restaurado;
         }
         catch (Exception ex)
         {
@@ -314,152 +294,117 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
         public static ValidationResult Error(string message) => new() { IsValid = false, ErrorMessage = message };
     }
 
-    // 🌍 HELPER METHODS FOR LOCATION MANAGEMENT (adapted from Iteration1)
-    protected virtual async Task<Pais?> ObtenerOCrearPaisAsync(string? nombrePais)
+    // 🌍 UBICACIÓN: se arma como grafo y se guarda con el elemento.
+    // El país se guarda solo en la provincia (REV-01, H-05); sin provincia se usa la
+    // "Desconocida" de ese país. Las coordenadas se validan y se guardan como número (H-06).
+    protected async Task<Ubicacion?> ResolverUbicacionAsync(TCreateDto createDto)
     {
-        if (string.IsNullOrWhiteSpace(nombrePais))
-            return null;
-
-        // First try to find existing país
-        var pais = await _context.Paises
-            .FirstOrDefaultAsync(p => p.NombrePais == nombrePais && p.EstadoActivo);
-
-        if (pais == null)
+        if (createDto.UbicacionId.HasValue)
         {
-            // Create new país with explicit transaction handling
-            pais = new Pais 
-            { 
-                NombrePais = nombrePais,
-                EstadoActivo = true,
-                FechaCreacion = DateTime.Now
-            };
-            
-            // Add and save immediately to get the ID
-            _context.Paises.Add(pais);
-            await _context.SaveChangesAsync();
-            
-            // Ensure entity is tracked properly
-            _context.Entry(pais).Reload();
-            
-            _logger.LogInformation("Creado nuevo país: {NombrePais} con ID: {Id}", nombrePais, pais.Id);
+            return await _ubicaciones.GetByIdAsync(createDto.UbicacionId.Value)
+                ?? throw new ArgumentException($"La ubicación {createDto.UbicacionId.Value} no existe");
         }
 
-        return pais;
-    }
+        var datos = createDto.Ubicacion;
+        if (datos == null) return null;
 
-    protected virtual async Task<Provincia?> ObtenerOCrearProvinciaAsync(string? nombreProvincia, int? paisId)
-    {
-        if (string.IsNullOrWhiteSpace(nombreProvincia) || !paisId.HasValue)
-            return null;
-
-        try
+        Provincia provincia;
+        if (!string.IsNullOrWhiteSpace(datos.NombrePais))
         {
-            // Ensure the País exists in the database before creating Provincia
-            var paisExists = await _context.Paises.AnyAsync(p => p.Id == paisId.Value && p.EstadoActivo);
-            if (!paisExists)
-            {
-                _logger.LogWarning("País con ID {PaisId} no encontrado para crear provincia {NombreProvincia}", paisId, nombreProvincia);
-                return null;
-            }
-
-            var provincia = await _context.Provincias
-                .FirstOrDefaultAsync(p => p.NombreProvincia == nombreProvincia && 
-                                        p.PaisId == paisId.Value && 
-                                        p.EstadoActivo);
-
-            if (provincia == null)
-            {
-                provincia = new Provincia
-                {
-                    NombreProvincia = nombreProvincia,
-                    PaisId = paisId.Value,
-                    EstadoActivo = true,
-                    FechaCreacion = DateTime.Now
-                };
-                await _context.Provincias.AddAsync(provincia);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Creada nueva provincia: {NombreProvincia} para país ID: {PaisId}", nombreProvincia, paisId);
-            }
-
-            return provincia;
+            var pais = await _ubicaciones.ObtenerOCrearPaisAsync(datos.NombrePais);
+            provincia = string.IsNullOrWhiteSpace(datos.NombreProvincia)
+                ? await _ubicaciones.ObtenerProvinciaDesconocidaAsync(pais)
+                : await _ubicaciones.ObtenerOCrearProvinciaAsync(datos.NombreProvincia, pais);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error al crear provincia {NombreProvincia} para país ID: {PaisId}", nombreProvincia, paisId);
-            return null; // Return null instead of throwing to prevent breaking the main operation
+            provincia = await _ubicaciones.ObtenerProvinciaDesconocidaGlobalAsync();
         }
-    }
 
-    protected virtual async Task<Ubicacion> CrearUbicacionAsync(TCreateDto createDto, int? paisId = null, int? provinciaId = null)
-    {
-        var desconocido = await Data.SeedData.EnsureUbicacionDesconocidaAsync(_context);
-        try
+        return new Ubicacion
         {
-            // Create location with basic data and foreign keys
-            var ubicacion = new Ubicacion
-            {
-                Latitud = ObtenerValorUbicacion(createDto, "Latitud") ?? "0.0",
-                Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
-                Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
-                Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
-                // Sin país o provincia: filas de referencia "Desconocido" (Data/SeedData.cs)
-                PaisId = paisId ?? desconocido.PaisId,
-                ProvinciaId = provinciaId ?? desconocido.ProvinciaId,
-                EstadoActivo = true,
-                FechaCreacion = DateTime.Now
-            };
-
-            await _context.Ubicaciones.AddAsync(ubicacion);
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Creada nueva ubicación: {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}",
-                ubicacion.Localidad, ubicacion.PaisId, ubicacion.ProvinciaId);
-
-            return ubicacion;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al crear ubicación para {Localidad} con País ID: {PaisId}, Provincia ID: {ProvinciaId}",
-                ObtenerValorUbicacion(createDto, "Localidad"), paisId, provinciaId);
-
-            // Create location with default values as fallback
-            var ubicacionFallback = new Ubicacion
-            {
-                Latitud = ObtenerValorUbicacion(createDto, "Latitud") ?? "0.0",
-                Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
-                Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
-                Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
-                PaisId = desconocido.PaisId,
-                ProvinciaId = desconocido.ProvinciaId,
-                EstadoActivo = true,
-                FechaCreacion = DateTime.Now
-            };
-
-            await _context.Ubicaciones.AddAsync(ubicacionFallback);
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Creada ubicación de respaldo con valores por defecto: {Localidad}", ubicacionFallback.Localidad);
-
-            return ubicacionFallback;
-        }
-    }
-
-    protected virtual async Task<Galeria.GaleriaElementoGeologico> CrearGaleriaAsync(string nombreElemento)
-    {
-        var galeria = new Galeria.GaleriaElementoGeologico
-        {
-            DetalleGrupo = $"Galería de {nombreElemento}"
+            Provincia = provincia,
+            Latitud = Coordenada.Parse(datos.Latitud, -90, 90),
+            Longitud = Coordenada.Parse(datos.Longitud, -180, 180),
+            Localidad = string.IsNullOrWhiteSpace(datos.Localidad) ? "Desconocida" : datos.Localidad,
+            Leyenda = string.IsNullOrWhiteSpace(datos.Leyenda) ? "Sin leyenda" : datos.Leyenda,
+            EstadoActivo = true,
+            FechaCreacion = DateTime.Now
         };
-
-        await _context.GaleriaElementosGeologicos.AddAsync(galeria);
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Creada nueva galería para elemento: {NombreElemento}", nombreElemento);
-
-        return galeria;
     }
 
-    // Helper method to get location values from DTO using reflection
-    private string? ObtenerValorUbicacion(TCreateDto dto, string propertyName)
+    protected static Galeria.GaleriaElementoGeologico NuevaGaleria(string nombreElemento) => new()
     {
-        var property = typeof(TCreateDto).GetProperty(propertyName);
-        return property?.GetValue(dto)?.ToString();
+        DetalleGrupo = $"Galeria de {nombreElemento}",
+        EstadoActivo = true,
+        FechaCreacion = DateTime.Now
+    };
+
+    // 📦 CARGA MASIVA (Excel): todas las filas o ninguna (REV-01, H-14).
+    // Misma regla que tenía el cliente: si el código ya existe en un elemento activo del
+    // mismo tipo se actualiza; si pertenece a otro tipo se crea con sufijo ".D{fila}".
+    public virtual async Task<LoteResultadoDto> CargarLoteAsync(IReadOnlyList<TCreateDto> filas, int usuarioId)
+    {
+        var resultado = new LoteResultadoDto { TotalFilas = filas.Count };
+        if (filas.Count == 0 || filas.Count > MaxFilasLote)
+        {
+            resultado.Errores.Add(new LoteErrorDto { Fila = 0, Mensaje = $"El lote debe tener entre 1 y {MaxFilasLote} filas" });
+            return resultado;
+        }
+
+        try
+        {
+            await _unitOfWork.EnTransaccionAsync(async () =>
+            {
+                for (var i = 0; i < filas.Count; i++)
+                {
+                    var fila = filas[i];
+                    var existente = await _repository.FindAnyByCodigoAsync(fila.Codigo);
+                    if (existente is T mismoTipo)
+                    {
+                        if (!mismoTipo.EstadoActivo)
+                        {
+                            resultado.Errores.Add(new LoteErrorDto { Fila = i + 1, Codigo = fila.Codigo, Mensaje = "El código pertenece a un elemento eliminado" });
+                            continue;
+                        }
+                        ActualizarDesdeCreateDto(fila, mismoTipo);
+                        mismoTipo.UsuarioActualizacionId = usuarioId;
+                        await _repository.UpdateAsync(mismoTipo);
+                        resultado.Actualizados++;
+                        continue;
+                    }
+                    if (existente != null)
+                        fila.Codigo = $"{fila.Codigo}.D{i + 1}";
+
+                    var validacion = await ValidateCreateAsync(fila);
+                    if (!validacion.IsValid)
+                    {
+                        resultado.Errores.Add(new LoteErrorDto { Fila = i + 1, Codigo = fila.Codigo, Mensaje = validacion.ErrorMessage });
+                        continue;
+                    }
+                    var elemento = await MapCreateDtoToEntityAsync(fila);
+                    elemento.UsuarioCreacionId = usuarioId;
+                    elemento.Galeria = NuevaGaleria(elemento.Nombre);
+                    await _repository.CreateAsync(elemento);
+                    resultado.Creados++;
+                }
+
+                if (resultado.Errores.Count > 0)
+                    _unitOfWork.MarcarParaRevertir();
+                return true;
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en la carga masiva de {ElementType}", ElementTypeName);
+            resultado.Errores.Add(new LoteErrorDto { Fila = 0, Mensaje = "Error al guardar el lote; no se guardó ninguna fila" });
+        }
+
+        resultado.Success = resultado.Errores.Count == 0;
+        if (!resultado.Success) { resultado.Creados = 0; resultado.Actualizados = 0; }
+        return resultado;
     }
+
+    /// <summary>Copia los campos editables de una fila de carga masiva sobre un elemento existente (sin tocar la ubicación).</summary>
+    protected abstract void ActualizarDesdeCreateDto(TCreateDto dto, T elemento);
 }

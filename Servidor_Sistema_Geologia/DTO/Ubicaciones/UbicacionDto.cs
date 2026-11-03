@@ -3,8 +3,8 @@
 public class UbicacionDto
 {
 	public int Id { get; set; }
-	public string? Latitud { get; set; }
-	public string? Longitud { get; set; }
+	public double? Latitud { get; set; }
+	public double? Longitud { get; set; }
 	public string? Localidad { get; set; }
 	public string? Leyenda { get; set; }
 	public bool EstadoActivo { get; set; } = true;
