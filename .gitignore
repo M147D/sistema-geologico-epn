@@ -363,23 +363,26 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
-FodyWeavers.xsd
-/Servidor_Sistema_Geologia/appsettings.json
-/Servidor_Sistema_Geologia/appsettings.json
+
+# ── Reglas propias del proyecto ──────────────────────────────────────────
+# Secretos y configuración local: los valores reales entran por variables de
+# entorno (.env en la raíz, leído por Docker Compose). appsettings.json se
+# versiona sin secretos.
+.env
+.env.*
+!.env.example
+Servidor_Sistema_Geologia/appsettings.Development.json
+Servidor_Sistema_Geologia/appsettings.Local.json
+Servidor_Sistema_Geologia/appsettings.*.local.json
 .vscode/launch.json
 .vscode/tasks.json
 run-project.ps1
-*.sh
-*.json
+
+# Datos del museo y respaldos: nunca al repo.
 *.xlsx
 *.csv
 *.pdf
 *.zip
-
-# Allow specific frontend stub files for VITE_USE_STUBS feature
-!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/stubs/
-!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/hooks/useElementosService.js
-!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/hooks/useGeologiaService.js
-!Cliente_Sistema_Geologia/cliente-sistema-geologico/src/hooks/useAuthService.js
-!Cliente_Sistema_Geologia/cliente-sistema-geologico/.env.example
-
+*.bak
+*.dump
+backups/
