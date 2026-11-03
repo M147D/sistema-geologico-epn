@@ -1,0 +1,117 @@
+# Producción en un VPS con Docker Compose. Requiere .env (chmod 600) en el
+# servidor; ${VAR:?} detiene el arranque si falta la variable.
+#   docker compose -f compose.prod.yaml build
+#   docker compose -f compose.prod.yaml run --rm api --migrate     (al instalar y tras cada migración nueva)
+#   docker compose -f compose.prod.yaml up -d --wait
+name: sistemageologico-prod
+
+x-seguridad: &seguridad
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-db-env: &db-env
+  APP_DB_USER: ${APP_DB_USER:?falta APP_DB_USER}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:?falta APP_DB_PASSWORD}
+  DATOS_DB: ${DATOS_DB:-sistemageologico_datos}
+  GIS_DB: ${GIS_DB:-sistemageologico_gis}
+
+services:
+  db:
+    <<: *seguridad
+    image: postgis/postgis:18-3.6
+    environment:
+      <<: *db-env
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - db-datos:/var/lib/postgresql
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+    networks: [interna]
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${GIS_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  api:
+    <<: *seguridad
+    init: true
+    build:
+      context: Servidor_Sistema_Geologia
+      dockerfile: ../docker/prod/api.Dockerfile
+    image: sistemageologico-api:1.0.0
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      HOME: /tmp
+      ConnectionStrings__DefaultConnection: Host=db;Database=${DATOS_DB:-sistemageologico_datos};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}
+      ConnectionStrings__PostGISConnection: Host=db;Database=${GIS_DB:-sistemageologico_gis};Username=${APP_DB_USER};Password=${APP_DB_PASSWORD}
+      JwtSettings__SecretKey: ${JWT_SECRET:?falta JWT_SECRET}
+      DefaultSuperAdmin__Email: ${ADMIN_EMAIL:?falta ADMIN_EMAIL}
+      DefaultSuperAdmin__Password: ${ADMIN_PASSWORD:?falta ADMIN_PASSWORD}
+      EmailSettings__SmtpHost: ${SMTP_HOST:-}
+      EmailSettings__SmtpPort: ${SMTP_PORT:-587}
+      EmailSettings__SenderEmail: ${SMTP_SENDER_EMAIL:-}
+      EmailSettings__SenderPassword: ${SMTP_PASSWORD:-}
+      EmailSettings__DestinationEmails__0: ${INFORME_DESTINO:-}
+    expose:
+      - "8080"
+    # "web" da salida a internet (SMTP); "interna" llega a la base.
+    networks: [web, interna]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *seguridad
+    build:
+      context: Cliente_Sistema_Geologia/cliente-sistema-geologico
+      dockerfile: ../../docker/prod/web.Dockerfile
+      additional_contexts:
+        config: docker/prod
+    image: sistemageologico-web:1.0.0
+    read_only: true
+    tmpfs:
+      - /tmp
+    expose:
+      - "8080"
+    networks: [web]
+
+  caddy:
+    <<: *seguridad
+    image: caddy:2.10.2-alpine
+    environment:
+      DOMINIO: ${DOMINIO:?falta DOMINIO}
+    ports:
+      - "${PUERTO_HTTP:-80}:80"
+      - "${PUERTO_HTTPS:-443}:443"
+      - "${PUERTO_HTTPS:-443}:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-datos:/data
+      - caddy-config:/config
+    networks: [web]
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+
+networks:
+  web:
+  interna:
+    internal: true
+
+volumes:
+  db-datos:
+  caddy-datos:
+  caddy-config:

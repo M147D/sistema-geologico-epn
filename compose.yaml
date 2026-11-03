@@ -53,7 +53,10 @@ services:
       - nuget:/nuget
     ports:
       - "127.0.0.1:5095:5095"
-    command: dotnet watch run --no-launch-profile --non-interactive --urls http://0.0.0.0:5095
+    # --no-hot-reload: recompila y reinicia en cada cambio. Hot Reload se cae en el
+    # contenedor con algunas ediciones (visto el 2026-11-03 al cambiar Program.cs).
+    command: dotnet watch run --no-hot-reload --no-launch-profile --non-interactive --urls http://0.0.0.0:5095
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy

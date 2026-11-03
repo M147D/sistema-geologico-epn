@@ -17,6 +17,22 @@ using System.Text;
 // que por defecto exige DateTime en UTC para timestamptz.
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+// HEALTHCHECK de Docker sin curl en la imagen: `dotnet <dll> --healthcheck`.
+if (args.Contains("--healthcheck"))
+{
+	var puerto = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS")?.Split(';', ',')[0] ?? "8080";
+	using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+	try
+	{
+		var respuesta = await http.GetAsync($"http://127.0.0.1:{puerto}/health");
+		Environment.Exit(respuesta.IsSuccessStatusCode ? 0 : 1);
+	}
+	catch
+	{
+		Environment.Exit(1);
+	}
+}
+
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 

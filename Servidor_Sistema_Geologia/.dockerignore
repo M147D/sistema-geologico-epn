@@ -1,0 +1,9 @@
+bin/
+obj/
+**/*.md
+**/.env
+**/.env.*
+appsettings.Development.json
+appsettings.Local.json
+*.http
+Properties/launchSettings.json

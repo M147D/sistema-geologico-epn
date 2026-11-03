@@ -5,6 +5,7 @@
 # URL_BASE: http://127.0.0.1:5174 (desarrollo, proxy de Vite) o https://<dominio> (Caddy).
 # ESCRIBE en la base: crea un usuario Free y una roca con una foto, y al final
 # los desactiva (borrado lógico). No usar en producción salvo a propósito.
+# INSECURE=1 acepta el certificado de la CA interna de Caddy (DOMINIO=localhost).
 # Requiere: bash, curl, python3. Se puede repetir: cada corrida usa códigos nuevos.
 set -euo pipefail
 
@@ -22,7 +23,7 @@ json()  { python3 -I -c "import json,sys; d=json.load(sys.stdin); print($1)"; }
 # status METODO RUTA TOKEN [args de curl...] → imprime el código HTTP, cuerpo en $TMP/body
 status() {
   local metodo="$1" ruta="$2" token="$3"; shift 3
-  curl -s -o "$TMP/body" -w '%{http_code}' -X "$metodo" "$BASE$ruta" \
+  curl -s ${INSECURE:+-k} -o "$TMP/body" -w '%{http_code}' -X "$metodo" "$BASE$ruta" \
     ${token:+-H "Authorization: Bearer $token"} "$@"
 }
 
