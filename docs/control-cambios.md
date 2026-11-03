@@ -76,3 +76,41 @@ el 2026-11-03; ningún servidor todavía).
 **Relacionados:** [PLAN-2026-11-03](superpowers/plans/2026-11-03-docker-postgresql.md),
 [DEP-01](despliegue/vps-docker.md), [DIA-08](diagramas/entornos.md),
 [REV-01](revisiones/2026-11-03-sistema-completo.md), PS-01, PS-02.
+
+## CAM-04 · Cierre de REV-01: capas, esquema de Ubicación y cargas atómicas
+
+**Fecha:** 2026-11-03.
+
+**Tipo:** migración.
+
+**Commit:** `e3d2880`.
+
+**Qué cambió y por qué:** el usuario pidió (2026-11-03) dejar P-02 como
+aplicado y cerrar los hallazgos de REV-01. Eligió carga por lotes y corregir el
+modelo.
+
+- **Esquema:**
+  - Se quita `tb_Ubicaciones.paisId`.
+  - `latitud` y `longitud` pasan de texto a `double precision` nullable, con
+    `CHECK` de rango.
+  - Se vacían las tablas de roles de Identity.
+  - Lo hacen las migraciones `UbicacionPaisDesdeProvinciaYCoordenadasNumericas`
+    y `RolSoloEnColumnaUsuarios`, probadas en ambos sentidos sobre la base de
+    desarrollo.
+- **Arquitectura:**
+  - Los servicios ya no usan el DbContext; se agregan `IUbicacionRepository` e
+    `IUnitOfWork`.
+  - El alta guarda todo en una sola transacción.
+  - Las consultas de metadatos de fotos no leen los bytes.
+- **API:**
+  - Nuevo `POST /api/elementos-geologicos/lote/{tipo}`, solo Admin y todo o
+    nada, que usa la carga desde Excel.
+  - Las coordenadas se responden como número.
+- **Verificación:** ART-01 y ART-02 pasan, y la carga desde Excel funcionó en el
+  navegador.
+
+**Producción:** no (no hay producción).
+
+**Relacionados:** [REV-02](revisiones/2026-11-03-cierre-rev01.md),
+[REV-01](revisiones/2026-11-03-sistema-completo.md), PEN-05 a PEN-08,
+[DIA-03](diagramas/modelo-datos.md), ART-02.

@@ -9,7 +9,7 @@ funcional todavía no existe.
 | Código | Documento | Modelo | Tipo | Sale de | Revisado |
 |---|---|---|---|---|---|
 | DIA-01 | [vista-general.md](vista-general.md) | Vista general | `flowchart` | `Program.cs`, `Caddyfile`, `compose.prod.yaml`, `apiClient.js`, `EmailService.cs`, `ImageProcessingService.cs` | 2026-11-03, `8dfe171` |
-| DIA-03 | [modelo-datos.md](modelo-datos.md) | Modelo de datos (dos bases PostgreSQL) | `erDiagram` | `SistemaGeologicoDbContext.cs`, `PostGISDbContext.cs`, `Models/`, `Migrations/`, `docker/db/init/` | 2026-11-03, `8dfe171` |
+| DIA-03 | [modelo-datos.md](modelo-datos.md) | Modelo de datos (dos bases PostgreSQL) | `erDiagram` | `SistemaGeologicoDbContext.cs`, `PostGISDbContext.cs`, `Models/`, `Migrations/`, `docker/db/init/` | 2026-11-03, `e3d2880` |
 | DIA-08 | [entornos.md](entornos.md) | Entornos y despliegue | `flowchart` | `compose.yaml`, `compose.prod.yaml`, `Caddyfile`, `docker/` | 2026-11-03, `8dfe171` |
 
 Todavía sin dibujar, aunque el código tiene la pieza: casos de uso, clases del

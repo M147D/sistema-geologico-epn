@@ -71,7 +71,7 @@ PEN-05.
 
 ## PEN-04 · Capas GIS reproducibles
 
-**Estado:** en curso (2026-11-03): el esquema de las tres tablas se crea vacío al iniciar PostGIS (`docker/db/init/01-bases-y-capas-gis.sh`, commit `edc0544`); faltan los datos del IIGE y su paso de carga (el usuario no los tiene a mano, 2026-11-03).
+**Estado:** en curso (2026-11-03; sigue abierto en REV-02 como H-01): el esquema de las tres tablas se crea vacío al iniciar PostGIS (`docker/db/init/01-bases-y-capas-gis.sh`, commit `edc0544`); faltan los datos del IIGE y su paso de carga (el usuario no los tiene a mano, 2026-11-03).
 
 **Situación actual:** `tb_geologia`, `tb_provincias` y `tb_ecuador` se leen
 desde PostGIS, pero no hay en el repo ni el esquema ni los datos ni el
@@ -90,7 +90,7 @@ datos del IIGE antes de publicarlo en un repo público. Al cerrarlo: DIA-03, ARQ
 
 ## PEN-05 · Ubicación en tercera forma normal y con coordenadas numéricas
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): `Ubicacion` ya no guarda `paisId` (el país sale de la provincia; cada país tiene una provincia "Desconocida") y latitud/longitud son `double precision` nullable con `CHECK` de rango; migración `UbicacionPaisDesdeProvinciaYCoordenadasNumericas`, commit `e3d2880`. Verificado por REV-02 y ART-02.
 
 **Situación actual:** `Ubicacion` repite el país de su provincia y guarda
 latitud y longitud como texto (REV-01, H-05 y H-06).
@@ -110,7 +110,7 @@ PEN-03.
 
 ## PEN-06 · Una sola fuente para el rol del usuario
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): el rol vive solo en `Usuarios.Rol`; la semilla dejó de escribir roles de Identity y la migración `RolSoloEnColumnaUsuarios` vacía sus tablas; commit `e3d2880`.
 
 **Situación actual:** el rol está en la columna `Usuarios.Rol` (va en el JWT)
 y en las tablas de roles de Identity, que solo se tocan al crear el
@@ -129,7 +129,7 @@ reales). Al cerrarlo: DIA-03 y ARQ-01.
 
 ## PEN-07 · Crear un elemento en una sola transacción
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): elemento, ubicación y galería se guardan en un solo `SaveChanges`; la carga masiva usa `IUnitOfWork` (transacción explícita); commit `e3d2880`.
 
 **Situación actual:** ubicación, elemento y galería se guardan por separado
 (REV-01, H-08).
@@ -146,7 +146,7 @@ grafo completo y hacer un solo `SaveChangesAsync`.
 
 ## PEN-08 · Listar fotos sin leer sus bytes
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03): las consultas de metadatos usan la proyección `FotoProyecciones.SinImagen`; verificado con el log de SQL (0 consultas leen `imagen`); commit `e3d2880`.
 
 **Situación actual:** `GetGaleriaConFotosAsync` incluye las fotos completas
 (REV-01, H-09).

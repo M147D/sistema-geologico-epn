@@ -22,7 +22,7 @@ Docker. Detalle en ARQ-01.
 
 All project documentation lives under `docs/`, and every document carries a stable **code** in its title (`# ARQ-NN · …`; lessons and pending items are `## LA-NN · …` / `## PEN-NN · …` sections of one file each). Cross-references cite code + relative link, so a broken link can be recovered by grepping the code. Codes are never reused. `node scripts/check-docs.mjs` verifies links and codes.
 
-**Start here:** rebuild from scratch → ARQ-02; deploy → DEP-01; architecture → ARQ-01; every diagram → DIA-00; stack, why each piece, and environments → ARQ-03; design review → REV-01.
+**Start here:** rebuild from scratch → ARQ-02; deploy → DEP-01; architecture → ARQ-01; every diagram → DIA-00; stack, why each piece, and environments → ARQ-03; latest design review → REV-02.
 
 | Code | Document | What it covers |
 |---|---|---|
@@ -38,6 +38,7 @@ All project documentation lives under `docs/`, and every document carries a stab
 | PS-02 | [docs/problemas-soluciones/dotnet-watch-hot-reload.md](docs/problemas-soluciones/dotnet-watch-hot-reload.md) | `dotnet watch` died in the dev container on a Hot Reload error; now `--no-hot-reload` + restart. Fixed. |
 | PEN-01 … | [docs/pendientes.md](docs/pendientes.md) | Pending improvements, listed below. |
 | REV-01 | [docs/revisiones/2026-11-03-sistema-completo.md](docs/revisiones/2026-11-03-sistema-completo.md) | Design review at `d30f189` (before Docker): 10 patterns, 14 findings (4 high, 7 medium, 3 low). |
+| REV-02 | [docs/revisiones/2026-11-03-cierre-rev01.md](docs/revisiones/2026-11-03-cierre-rev01.md) | Design review at `e3d2880` closing REV-01: P-02 applied, 13 of 14 REV-01 findings closed; open: GIS data (PEN-04) and two consistency findings tracked in PEN-12. |
 | CAM-01 … | [docs/control-cambios.md](docs/control-cambios.md) | Change control: deployments, version changes, migrations, architecture changes and reviews, with their commit and whether they reached production. |
 | ART-01 … | [docs/artefactos.md](docs/artefactos.md) | Code kept from executing plans, in `scripts/artefactos/`; listed below. |
 
@@ -49,10 +50,10 @@ Pending improvements (`docs/pendientes.md`; an item is never deleted when done �
 - PEN-02 — Version the files the repo needs to build (`package.json`, `appsettings.json`). Done 2026-11-03.
 - PEN-03 — Seed the "Desconocido" country/province rows the code relies on. Done 2026-11-03.
 - PEN-04 — Reproducible GIS layers. In progress: empty schema created at db init; IIGE data and load step missing.
-- PEN-05 — `Ubicacion` in 3NF and with numeric coordinates. Pending.
-- PEN-06 — Single source for the user role (column vs. Identity roles). Pending.
-- PEN-07 — Create an element in one transaction. Pending.
-- PEN-08 — List photos without reading their bytes. Pending.
+- PEN-05 — `Ubicacion` in 3NF and with numeric coordinates. Done 2026-11-03.
+- PEN-06 — Single source for the user role (column vs. Identity roles). Done 2026-11-03.
+- PEN-07 — Create an element in one transaction. Done 2026-11-03.
+- PEN-08 — List photos without reading their bytes. Done 2026-11-03.
 - PEN-09 — Catalog database engine: consolidated in PostgreSQL. Done 2026-11-03.
 - PEN-10 — Mandatory, explicit configuration at startup. Done 2026-11-03.
 - PEN-11 — Scheduled off-server backups. Pending.
@@ -61,11 +62,13 @@ Pending improvements (`docs/pendientes.md`; an item is never deleted when done �
 Artifacts (`docs/artefactos.md`, code in `scripts/artefactos/`):
 
 - ART-01 — End-to-end smoke test against a running deployment (auth, roles, element + photo, watermark, GIS); reusable, writes test data.
+- ART-02 — API verification of the REV-01 closures (coordinates, country from province, atomic create, all-or-nothing batch); reusable, writes test data.
 
 Changes (`docs/control-cambios.md`):
 
 - CAM-01 — First design review and documentation; production: not applicable.
 - CAM-02 — .NET 8 → 10 and Node 20 → 26; production: no.
 - CAM-03 — Catalog in PostgreSQL and Docker deployment; production: no (tested locally).
+- CAM-04 — REV-01 closure: layers, Ubicacion schema migration, atomic batch load; production: no.
 
 **Adding a document:** take the next free code in its category, put it in the title (`# CODE · Title`, `## LA-NN · Title`, `## PEN-NN · Title`, `## ART-NN · Title`, `# REV-NN · Title`, `## CAM-NN · Title`), add it to this index, and run `node scripts/check-docs.mjs`.

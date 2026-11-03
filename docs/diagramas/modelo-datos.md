@@ -6,8 +6,8 @@
 
 **Sale de:** `Servidor_Sistema_Geologia/DAL/SistemaGeologicoDbContext.cs`,
 `DAL/PostGISDbContext.cs`, `Models/`,
-`Migrations/20261103131251_InitialPostgres.cs` y
-`docker/db/init/01-bases-y-capas-gis.sh` (commit `8dfe171`). Hasta `d30f189`
+`Migrations/` (`InitialPostgres`, `UbicacionPaisDesdeProvinciaYCoordenadasNumericas`,
+`RolSoloEnColumnaUsuarios`) y `docker/db/init/01-bases-y-capas-gis.sh` (commit `e3d2880`). Hasta `d30f189`
 el catálogo estaba en SQL Server (REV-01).
 
 **Texto que lo explica:** [ARQ-01](../arquitectura/diagrama.md) y
@@ -21,7 +21,6 @@ erDiagram
   Usuarios ||--o{ UsuarioRoles : "tiene"
   Roles ||--o{ UsuarioRoles : "se asigna en"
   tb_Paises ||--o{ tb_Provincias : "contiene"
-  tb_Paises ||--o{ tb_Ubicaciones : "ubica (copia, H-05)"
   tb_Provincias ||--o{ tb_Ubicaciones : "ubica"
   tb_Ubicaciones |o--o{ tb_ElementosGeologicos : "localiza"
   tb_ElementosGeologicos ||--o| tb_GaleriaElementosGeologicos : "tiene"
@@ -61,10 +60,9 @@ erDiagram
   }
   tb_Ubicaciones {
     int id PK
-    int paisId FK
-    int provinciaId FK
-    varchar(60) latitud "texto, H-06"
-    varchar(60) longitud "texto, H-06"
+    int provinciaId FK "el país sale de la provincia"
+    float8 latitud "NULL o -90..90 (CHECK)"
+    float8 longitud "NULL o -180..180 (CHECK)"
     varchar(500) localidad
     varchar(60) leyenda
     boolean estadoActivo
@@ -155,9 +153,9 @@ SRID 4326; los datos del IIGE no están en el repo (PEN-04).
 | Tabla | Propósito | Restricciones e índices |
 |---|---|---|
 | `Usuarios` | cuentas (Identity) con rol y estado | `IX_Usuarios_Email` único; bloqueo con `AccessFailedCount`/`LockoutEnd` |
-| `Roles`, `UsuarioRoles` | roles de Identity; copia del rol que no se mantiene (H-07) | PK compuesta `(UserId, RoleId)` |
-| `tb_Paises`, `tb_Provincias` | catálogo geográfico; países y provincias se crean al vuelo al dar de alta un elemento; la semilla crea "Desconocido"/"Desconocida" | FK `paisId`, `RESTRICT` |
-| `tb_Ubicaciones` | punto y localidad de un elemento | FK a país y provincia, `RESTRICT`; sin país o provincia usa las filas "Desconocido" que crea la semilla |
+| `Roles`, `UsuarioRoles` | tablas que `AddIdentity` exige; vacías y sin uso: el rol vive solo en `Usuarios.Rol` | PK compuesta `(UserId, RoleId)` |
+| `tb_Paises`, `tb_Provincias` | catálogo geográfico; países y provincias se crean al vuelo al dar de alta un elemento; cada país tiene una provincia "Desconocida"; la semilla crea "Desconocido"/"Desconocida" | FK `paisId`, `RESTRICT` |
+| `tb_Ubicaciones` | punto y localidad de un elemento | FK a provincia (`RESTRICT`); el país es el de la provincia; sin provincia se usa la "Desconocida" de ese país; coordenadas nulas si se desconocen, con `CHECK` de rango |
 | `tb_ElementosGeologicos` | fósiles, minerales y rocas en una tabla (TPH) | `IX_ElementosGeologicos_Codigo` único; `nombre` y `codigo` `NOT NULL` |
 | `tb_GaleriaElementosGeologicos` | una galería por elemento | FK única a elemento, `CASCADE` |
 | `tb_FotosElementos` | imágenes en la base | FK a galería, `CASCADE` |
@@ -165,8 +163,10 @@ SRID 4326; los datos del IIGE no están en el repo (PEN-04).
 
 ## Estrategia de persistencia
 
-- **Migraciones:** EF Core con Npgsql, solo para `sistemageologico_datos`; una
-  migración (`InitialPostgres`, 2026-11-03), sin SQL a mano. Se aplican con el
+- **Migraciones:** EF Core con Npgsql, solo para `sistemageologico_datos`; tres
+  migraciones (2026-11-03). `UbicacionPaisDesdeProvinciaYCoordenadasNumericas`
+  usa SQL explícito (`ALTER ... TYPE ... USING`, normaliza vacíos y `0.0/0.0`
+  a `NULL`) y su `Down` se probó ida y vuelta. Se aplican con el
   paso explícito `--migrate`, nunca al arrancar. La base GIS no tiene
   migraciones: su esquema está en el script de init.
 - **Fechas:** `timestamp without time zone` con hora local
@@ -177,7 +177,10 @@ SRID 4326; los datos del IIGE no están en el repo (PEN-04).
 - **Borrado:** lógico (`estadoActivo = false`, con fecha y usuario) para
   elementos, fotos y usuarios; los `CASCADE` solo actúan en un borrado físico,
   que el código no hace.
-- **Transacciones:** ninguna explícita; cada `SaveChangesAsync` es su propia
-  transacción, y el alta de un elemento usa varias (PEN-07).
+- **Transacciones:** el alta de un elemento guarda el grafo (ubicación,
+  provincia y país nuevos, elemento y galería) en un solo `SaveChangesAsync`.
+  La carga masiva usa `IUnitOfWork`: transacción explícita, todo o nada.
 - **Concurrencia:** sin control optimista en las tablas del catálogo; Identity
-  usa `ConcurrencyStamp` en usuarios y roles. Gana la última escritura.
+  usa `ConcurrencyStamp` en usuarios. Gana la última escritura, y un `Update`
+  de entidad completa puede deshacer un borrado lógico concurrente (REV-02,
+  H-03; PEN-12).

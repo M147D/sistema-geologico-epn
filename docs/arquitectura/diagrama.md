@@ -25,12 +25,14 @@ Diagramas: [DIA-00](../diagramas/indice.md). Índice: [CLAUDE.md](../../CLAUDE.m
 ## Estilo y patrones
 
 SPA + API, con el backend en capas Controller → Service → Repository
-(**parcial**: los servicios de elementos escriben directo en el DbContext).
-El procesamiento de imágenes salió del controlador a
-`ImageProcessingService`. Repository genérico, Template Method, herencia TPH,
-auditoría con borrado lógico, DTO e inyección de dependencias, aplicados. En
-el frontend, contextos como store con hooks de servicio privados y páginas
-contenedoras. Evidencia: [REV-01](../revisiones/2026-11-03-sistema-completo.md).
+(**aplicado**: ningún servicio ni controlador usa el DbContext; países,
+provincias y ubicaciones pasan por `IUbicacionRepository` y las transacciones
+por `IUnitOfWork`). Repository genérico, Template Method, herencia TPH,
+auditoría con borrado lógico, DTO, inyección de dependencias y Unit of Work,
+aplicados. En el frontend, contextos como store con hooks de servicio
+privados y páginas contenedoras. Evidencia:
+[REV-02](../revisiones/2026-11-03-cierre-rev01.md) (la anterior,
+[REV-01](../revisiones/2026-11-03-sistema-completo.md)).
 
 ## Vista general
 
@@ -128,7 +130,8 @@ o 403; en producción, una excepción no controlada responde 500 con
 | GET | `/elementos-geologicos/{id}` | Admin, Premium, Free, Invitado | Detalle. |
 | GET | `/elementos-geologicos/fosiles`, `/minerales`, `/rocas` | Admin, Premium, Free, Invitado | Lista por tipo (`page`, `pageSize`). |
 | GET | `/elementos-geologicos/by-codigo/{codigo}` | Admin, Invitado | Busca por código. |
-| POST | `/elementos-geologicos/fosiles`, `/minerales`, `/rocas` | Admin, Invitado | Crea (con ubicación y galería). |
+| POST | `/elementos-geologicos/fosiles`, `/minerales`, `/rocas` | Admin, Invitado | Crea el elemento con su ubicación y su galería en una sola transacción. La ubicación lleva `nombrePais`, y `nombreProvincia` es opcional ("Desconocida" si falta). Las coordenadas van como texto: vacío significa desconocido, el rango se valida y se responden como número. |
+| POST | `/elementos-geologicos/lote/fosiles`, `/minerales`, `/rocas` | Admin | Carga masiva `{ filas: [...] }`, de 1 a 2000 filas, todo o nada. Si el código ya existe en el mismo tipo, actualiza; si existe en otro tipo, crea con sufijo `.D{fila}`. Responde 200 con `{ creados, actualizados }` o 400 con `errores[{ fila, codigo, mensaje }]`. |
 | PUT | `/elementos-geologicos/{fosiles\|minerales\|rocas}/{id}` | Admin, Invitado | Edita. |
 | DELETE | `/elementos-geologicos/{id}` | Admin | Borrado lógico. |
 | POST | `/elementos-geologicos/{id}/solicitar-informe` | autenticado | Envía por correo la solicitud de informe petrográfico. |
@@ -158,8 +161,10 @@ termina con 0 o 1 (lo usa el `HEALTHCHECK` de la imagen).
 | Módulo | Responsabilidad | Depende de |
 |---|---|---|
 | `Program.cs` | Composición; valida la configuración obligatoria al arrancar; JWT; CORS; encabezados; `/health` | configuración |
-| `Data/SeedData.cs` | Roles, superadmin (solo si hay email y contraseña configurados) y país/provincia "Desconocido" | Identity, DbContext |
-| `BaseElementoGeologicoService` + `Fosil/Mineral/RocaService` | Alta, edición y borrado; crea ubicación (con "Desconocido" si falta), provincia y galería | repositorio y DbContext |
+| `Data/SeedData.cs` | Superadmin (solo si hay email y contraseña configurados) y país/provincia "Desconocido". No escribe roles de Identity: el rol vive solo en `Usuarios.Rol` | Identity, `UbicacionRepository` |
+| `BaseElementoGeologicoService` + `Fosil/Mineral/RocaService` | Alta (un solo `SaveChanges` con el elemento, su ubicación y su galería), edición, borrado, restauración y carga masiva | `IBaseElementoGeologicoRepository<T>`, `IUbicacionRepository`, `IUnitOfWork` |
+| `UbicacionRepository` | Países, provincias (y la "Desconocida" de cada país) y ubicaciones | DbContext |
+| `UnitOfWork` | Transacción explícita sobre el DbContext del request | DbContext |
 | `FotoElementosController` + `FotoElementoService` | Fotos en la base con caché en memoria (500 MB, 2 h) | `IImageProcessingService`, `IMemoryCache` |
 | `ImageProcessingService` | Miniatura y marca de agua con SkiaSharp; falla cerrado si no puede marcar | fuente DejaVu Sans Bold (o `ImageProcessing:WatermarkFontPath`) |
 | `AuthService`, `JwtService` | Registro, login con bloqueo, JWT (12 h por defecto) | Identity |
