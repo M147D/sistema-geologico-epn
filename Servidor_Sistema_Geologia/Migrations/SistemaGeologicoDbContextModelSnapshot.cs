@@ -2,8 +2,8 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Servidor_Sistema_Geologia;
 
 #nullable disable
@@ -17,37 +17,36 @@ namespace Servidor_Sistema_Geologia.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
+                        .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("Roles", (string)null);
                 });
@@ -56,18 +55,18 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -80,18 +79,18 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -103,16 +102,16 @@ namespace Servidor_Sistema_Geologia.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -124,10 +123,10 @@ namespace Servidor_Sistema_Geologia.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -139,16 +138,16 @@ namespace Servidor_Sistema_Geologia.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
@@ -159,32 +158,32 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("codigo");
 
                     b.Property<string>("DocumentosRelacionados")
                         .HasMaxLength(5000)
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("character varying(5000)")
                         .HasColumnName("documentosRelacionados");
 
                     b.Property<string>("Donante")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("donante");
 
                     b.Property<string>("Edad")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("edad");
 
                     b.Property<long>("Ejemplares")
@@ -193,58 +192,58 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.Property<bool>("EstadoActivo")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("estadoActivo");
 
                     b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaActualizacion");
 
                     b.Property<DateTime>("FechaCreacion")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaCreacion")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasDefaultValueSql("LOCALTIMESTAMP");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
                     b.Property<DateTime>("FechaIngreso")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaIngreso");
 
                     b.Property<bool>("LaminaExiste")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("laminaExiste");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("nombre");
 
                     b.Property<int?>("UbicacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("ubicacionId");
 
                     b.Property<int?>("UsuarioActualizacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioActualizacionId");
 
                     b.Property<int?>("UsuarioCreacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioCreacionId");
 
                     b.Property<int?>("UsuarioEliminacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
                     b.Property<string>("tipoElemento")
                         .IsRequired()
                         .HasMaxLength(21)
-                        .HasColumnType("nvarchar(21)");
+                        .HasColumnType("character varying(21)");
 
                     b.HasKey("Id");
 
@@ -271,56 +270,56 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("DescripcionEspecifica")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("descripcionEspecifica");
 
                     b.Property<bool>("EstadoActivo")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("estadoActivo");
 
                     b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaActualizacion");
 
                     b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaCreacion");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
                     b.Property<int>("GaleriaElementosGeologicoId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("galeriaElementosGeologicoId");
 
                     b.Property<byte[]>("Imagen")
                         .IsRequired()
-                        .HasColumnType("varbinary(max)")
+                        .HasColumnType("bytea")
                         .HasColumnName("imagen");
 
                     b.Property<int>("TipoFoto")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("tipoFoto");
 
                     b.Property<int?>("UsuarioActualizacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioActualizacionId");
 
                     b.Property<int?>("UsuarioCreacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioCreacionId");
 
                     b.Property<int?>("UsuarioEliminacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
                     b.HasKey("Id");
@@ -340,47 +339,47 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("DetalleGrupo")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("detalleGrupo");
 
                     b.Property<int>("ElementoGeologicoId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("elementoGeologicoId");
 
                     b.Property<bool>("EstadoActivo")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("estadoActivo");
 
                     b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaActualizacion");
 
                     b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaCreacion");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
                     b.Property<int?>("UsuarioActualizacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioActualizacionId");
 
                     b.Property<int?>("UsuarioCreacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioCreacionId");
 
                     b.Property<int?>("UsuarioEliminacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
                     b.HasKey("Id");
@@ -401,43 +400,43 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("EstadoActivo")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("estadoActivo");
 
                     b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaActualizacion");
 
                     b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaCreacion");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
                     b.Property<string>("NombrePais")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("nombrePais");
 
                     b.Property<int?>("UsuarioActualizacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioActualizacionId");
 
                     b.Property<int?>("UsuarioCreacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioCreacionId");
 
                     b.Property<int?>("UsuarioEliminacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
                     b.HasKey("Id");
@@ -455,47 +454,47 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("EstadoActivo")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("estadoActivo");
 
                     b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaActualizacion");
 
                     b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaCreacion");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
                     b.Property<string>("NombreProvincia")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("nombreProvincia");
 
                     b.Property<int>("PaisId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("paisId");
 
                     b.Property<int?>("UsuarioActualizacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioActualizacionId");
 
                     b.Property<int?>("UsuarioCreacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioCreacionId");
 
                     b.Property<int?>("UsuarioEliminacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
                     b.HasKey("Id");
@@ -515,69 +514,69 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("EstadoActivo")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("estadoActivo");
 
                     b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaActualizacion");
 
                     b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaCreacion");
 
                     b.Property<DateTime?>("FechaEliminacion")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp without time zone")
                         .HasColumnName("fechaEliminacion");
 
                     b.Property<string>("Latitud")
                         .IsRequired()
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("latitud");
 
                     b.Property<string>("Leyenda")
                         .IsRequired()
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("leyenda");
 
                     b.Property<string>("Localidad")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("localidad");
 
                     b.Property<string>("Longitud")
                         .IsRequired()
                         .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)")
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("longitud");
 
                     b.Property<int>("PaisId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("paisId");
 
                     b.Property<int>("ProvinciaId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("provinciaId");
 
                     b.Property<int?>("UsuarioActualizacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioActualizacionId");
 
                     b.Property<int?>("UsuarioCreacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioCreacionId");
 
                     b.Property<int?>("UsuarioEliminacionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
                     b.HasKey("Id");
@@ -599,85 +598,83 @@ namespace Servidor_Sistema_Geologia.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("EstadoActivo")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("NombreCompleto")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Rol")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("Rol");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique()
-                        .HasDatabaseName("IX_Usuarios_Email")
-                        .HasFilter("[Email] IS NOT NULL");
+                        .HasDatabaseName("IX_Usuarios_Email");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("Usuarios", (string)null);
                 });
@@ -689,17 +686,17 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<string>("Especie")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("especie");
 
                     b.Property<string>("Periodo")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("periodo");
 
                     b.Property<int>("TipoFosil")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("tipoFosil");
 
                     b.HasDiscriminator().HasValue("Fosil");
@@ -711,12 +708,12 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.Property<string>("Litologia")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("litologia");
 
                     b.Property<int>("TipoMineral")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("tipoMineral");
 
                     b.HasDiscriminator().HasValue("Mineral");
@@ -728,12 +725,12 @@ namespace Servidor_Sistema_Geologia.Migrations
 
                     b.Property<string>("Litologia")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("litologia_roca");
 
                     b.Property<int>("TipoRoca")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("tipoRoca");
 
                     b.HasDiscriminator().HasValue("Roca");

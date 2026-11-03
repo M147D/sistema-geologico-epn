@@ -1,36 +1,65 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using Servidor_Sistema_Geologia.Repositories.Interfaces;
-using Servidor_Sistema_Geologia.Repositories.Implementation;
-using Servidor_Sistema_Geologia.Services.Interfaces;
-using Servidor_Sistema_Geologia.Services.Implementation;
+using Microsoft.OpenApi;
 using Servidor_Sistema_Geologia.DAL;
+using Servidor_Sistema_Geologia.Data;
+using Servidor_Sistema_Geologia.Repositories.Implementation;
+using Servidor_Sistema_Geologia.Repositories.Interfaces;
+using Servidor_Sistema_Geologia.Services.Implementation;
+using Servidor_Sistema_Geologia.Services.Interfaces;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+// Las columnas de fecha del modelo son "timestamp without time zone" y el código
+// usa DateTime.Now (hora local). Este switch mantiene ese comportamiento con Npgsql,
+// que por defecto exige DateTime en UTC para timestamptz.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
-// Agregar servicios al contenedor.
+var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
+
+// ========================================
+// CONFIGURACIÓN OBLIGATORIA (falla al arrancar si falta)
+// ========================================
+
+static string Requerido(IConfiguration config, string clave) =>
+	string.IsNullOrWhiteSpace(config[clave])
+		? throw new InvalidOperationException($"Falta la configuración obligatoria '{clave}' (variable de entorno '{clave.Replace(":", "__")}').")
+		: config[clave]!;
+
+var datosConnection = Requerido(configuration, "ConnectionStrings:DefaultConnection");
+var gisConnection = Requerido(configuration, "ConnectionStrings:PostGISConnection");
+var jwtSecret = Requerido(configuration, "JwtSettings:SecretKey");
+if (jwtSecret.Length < 32)
+	throw new InvalidOperationException("JwtSettings:SecretKey debe tener al menos 32 caracteres.");
+var jwtIssuer = configuration["JwtSettings:Issuer"] ?? "SistemaGeologico";
+var jwtAudience = configuration["JwtSettings:Audience"] ?? "SistemaGeologico-API";
+var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+// ========================================
+// SERVICIOS
+// ========================================
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Registra el DbContext con la cadena de conexion
+// Catálogo e identidad (PostgreSQL)
 builder.Services.AddDbContext<Servidor_Sistema_Geologia.SistemaGeologicoDbContext>(options =>
-	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+	options.UseNpgsql(datosConnection));
 
-// Registrar PostGIS Context para datos geoespaciales
+// Capas GIS (PostgreSQL + PostGIS, solo lectura)
 builder.Services.AddDbContext<PostGISDbContext>(options =>
-	options.UseNpgsql(
-		builder.Configuration.GetConnectionString("PostGISConnection"),
-		npgsqlOptions => npgsqlOptions.UseNetTopologySuite()
-	));
+	options.UseNpgsql(gisConnection, npgsqlOptions => npgsqlOptions.UseNetTopologySuite()));
 
-// Configurar Identity
+builder.Services.AddHealthChecks()
+	.AddDbContextCheck<Servidor_Sistema_Geologia.SistemaGeologicoDbContext>("datos")
+	.AddDbContextCheck<PostGISDbContext>("gis");
+
+// Identity
 builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int>>(options =>
 {
-	// Configuración de Password
 	options.Password.RequireDigit = true;
 	options.Password.RequireLowercase = true;
 	options.Password.RequireUppercase = true;
@@ -38,309 +67,215 @@ builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int
 	options.Password.RequiredLength = 6;
 	options.Password.RequiredUniqueChars = 1;
 
-	// Configuración de Lockout
 	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
 	options.Lockout.MaxFailedAccessAttempts = 3;
 	options.Lockout.AllowedForNewUsers = true;
 
-	// Configuración de Usuario
 	options.User.AllowedUserNameCharacters =
 		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
 	options.User.RequireUniqueEmail = true;
 
-	// Configuración de SignIn
 	options.SignIn.RequireConfirmedEmail = false;
 	options.SignIn.RequireConfirmedPhoneNumber = false;
 })
 .AddEntityFrameworkStores<Servidor_Sistema_Geologia.SistemaGeologicoDbContext>()
 .AddDefaultTokenProviders();
 
-// ========================================
-// CONFIGURACIÓN DE INYECCIÓN DE DEPENDENCIAS
-// ========================================
-
-// Registrar Repositorios
+// Repositorios
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPaisRepository, PaisRepository>();
 builder.Services.AddScoped<IProvinciaRepository, ProvinciaRepository>();
 builder.Services.AddScoped<IElementoGeologicoRepository, ElementoGeologicoRepository>();
-
-// Registrar Repositorios específicos de Elementos Geológicos
 builder.Services.AddScoped<IFosilRepository, FosilRepository>();
 builder.Services.AddScoped<IMineralRepository, MineralRepository>();
 builder.Services.AddScoped<IRocaRepository, RocaRepository>();
+builder.Services.AddScoped<IFotoElementoRepository, FotoElementoRepository>();
+builder.Services.AddScoped<IGeologiaGISRepository, GeologiaGISRepository>();
 
-// Registrar Servicios
+// Servicios
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPaisService, PaisService>();
 builder.Services.AddScoped<IProvinciaService, ProvinciaService>();
 builder.Services.AddScoped<IElementoGeologicoService, ElementoGeologicoService>();
-
-// Registrar Servicios específicos de Elementos Geológicos
 builder.Services.AddScoped<IFosilService, FosilService>();
 builder.Services.AddScoped<IMineralService, MineralService>();
 builder.Services.AddScoped<IRocaService, RocaService>();
-
-// Registrar Repositorios y Servicios de Fotos
-builder.Services.AddScoped<IFotoElementoRepository, FotoElementoRepository>();
 builder.Services.AddScoped<IFotoElementoService, FotoElementoService>();
-
-// Registrar Repositorio GIS para datos geoespaciales
-builder.Services.AddScoped<IGeologiaGISRepository, GeologiaGISRepository>();
-
-// Registrar Servicio GIS
 builder.Services.AddScoped<IGeologiaGISService, GeologiaGISService>();
-
-// Registrar servicio de colores QML (Singleton para cargar una sola vez)
 builder.Services.AddSingleton<QmlColorService>();
-
-// Registrar servicio de Email (Singleton — no tiene estado por request)
 builder.Services.AddSingleton<IEmailService, EmailService>();
+builder.Services.AddSingleton<IImageProcessingService, ImageProcessingService>();
 
-// Caché en memoria para imágenes procesadas (thumbnails + watermarks)
+// Caché en memoria para imágenes procesadas (miniaturas y marcas de agua)
 builder.Services.AddMemoryCache(options =>
 {
 	options.SizeLimit = 500 * 1024 * 1024; // 500 MB
 });
 
 // ========================================
-// CONFIGURACIÓN DE JWT AUTHENTICATION
+// JWT
 // ========================================
-
-// Configurar JWT Authentication
-var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "SistemaGeologico2025-SuperSecretKey-DeDesarrollo-NoUsarEnProduccion-MinimumLengthRequired";
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "SistemaGeologico";
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "SistemaGeologico-API";
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+	options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+	options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+	options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
-    options.SaveToken = true;
-    options.RequireHttpsMetadata = false; // Solo para desarrollo
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-        ClockSkew = TimeSpan.Zero // Sin tolerancia para expiración
-    };
+	options.SaveToken = true;
+	// TLS lo termina el proxy (Caddy); la API recibe HTTP dentro de la red de Docker.
+	options.RequireHttpsMetadata = false;
+	options.TokenValidationParameters = new TokenValidationParameters
+	{
+		ValidateIssuer = true,
+		ValidateAudience = true,
+		ValidateLifetime = true,
+		ValidateIssuerSigningKey = true,
+		ValidIssuer = jwtIssuer,
+		ValidAudience = jwtAudience,
+		IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+		ClockSkew = TimeSpan.Zero
+	};
 
-    // Configurar eventos para manejo de errores JWT
-    options.Events = new JwtBearerEvents
-    {
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine($"🔥 JWT Authentication failed: {context.Exception.Message}");
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
-            {
-                success = false,
-                message = "Token inválido o expirado",
-                error = context.Exception?.Message
-            }));
-        },
-        OnTokenValidated = context =>
-        {
-            var userEmail = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Unknown";
-            Console.WriteLine($"✅ JWT Token validated for user: {userEmail}");
-            return Task.CompletedTask;
-        },
-        OnChallenge = context =>
-        {
-            Console.WriteLine($"⚠️ JWT Challenge: {context.Error}, {context.ErrorDescription}");
-            context.HandleResponse();
-            
-            if (!context.Response.HasStarted)
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                context.Response.ContentType = "application/json";
-                return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    success = false,
-                    message = "Se requiere autenticación",
-                    loginRequired = true
-                }));
-            }
-            return Task.CompletedTask;
-        },
-        OnForbidden = context =>
-        {
-            Console.WriteLine($"🚫 JWT Forbidden access");
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            context.Response.ContentType = "application/json";
-            return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
-            {
-                success = false,
-                message = "Acceso denegado",
-                insufficientPermissions = true
-            }));
-        }
-    };
+	options.Events = new JwtBearerEvents
+	{
+		OnAuthenticationFailed = context =>
+		{
+			var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+			logger.LogWarning("JWT inválido: {Message}", context.Exception.Message);
+			context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+			context.Response.ContentType = "application/json";
+			return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+			{
+				success = false,
+				message = "Token inválido o expirado"
+			}));
+		},
+		OnChallenge = context =>
+		{
+			context.HandleResponse();
+			if (!context.Response.HasStarted)
+			{
+				context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+				context.Response.ContentType = "application/json";
+				return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+				{
+					success = false,
+					message = "Se requiere autenticación",
+					loginRequired = true
+				}));
+			}
+			return Task.CompletedTask;
+		},
+		OnForbidden = context =>
+		{
+			context.Response.StatusCode = StatusCodes.Status403Forbidden;
+			context.Response.ContentType = "application/json";
+			return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+			{
+				success = false,
+				message = "Acceso denegado",
+				insufficientPermissions = true
+			}));
+		}
+	};
 });
 
 // ========================================
-// CONFIGURACIÓN DE SWAGGER CON JWT
+// SWAGGER (solo Development)
 // ========================================
 
 builder.Services.AddSwaggerGen(c =>
 {
 	c.SwaggerDoc("v1", new OpenApiInfo { Title = "Sistema Geologia API", Version = "v1" });
-	
-	// Configurar JWT en Swagger
 	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 	{
-		Description = "JWT Authorization header usando el esquema Bearer. Ejemplo: 'Bearer {token}'",
+		Description = "JWT en la cabecera Authorization. Pegar solo el token.",
 		Name = "Authorization",
 		In = ParameterLocation.Header,
-		Type = SecuritySchemeType.ApiKey,
-		Scheme = "Bearer"
+		Type = SecuritySchemeType.Http,
+		Scheme = "bearer",
+		BearerFormat = "JWT"
 	});
-
-	c.AddSecurityRequirement(new OpenApiSecurityRequirement
+	c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
 	{
-		{
-			new OpenApiSecurityScheme
-			{
-				Reference = new OpenApiReference 
-				{ 
-					Type = ReferenceType.SecurityScheme, 
-					Id = "Bearer" 
-				}
-			},
-			new string[] {}
-		}
+		[new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
 	});
 });
 
-// Configurar CORS
+// ========================================
+// CORS: solo hace falta si el frontend se sirve desde otro origen.
+// Con el proxy (Vite en desarrollo, Caddy en producción) todo es mismo origen.
+// ========================================
+
 builder.Services.AddCors(options =>
 {
-	options.AddPolicy("AllowFrontend",
-		policy =>
-		{
-			policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:3000") // URLs del frontend
-				  .AllowAnyHeader()
-				  .AllowAnyMethod()
-				  .AllowCredentials();
-		});
+	options.AddPolicy("AllowFrontend", policy =>
+	{
+		if (corsOrigins.Length > 0)
+			policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+	});
 });
 
-// Configurar políticas de autorización
 builder.Services.AddAuthorization(options =>
 {
-	options.AddPolicy("RequireAdminRole", policy =>
-		policy.RequireRole("Admin"));
+	options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
+	options.AddPolicy("RequireAuthenticated", policy => policy.RequireAuthenticatedUser());
+	options.AddPolicy("CanCreateEdit", policy => policy.RequireRole("Admin", "Invitado"));
+});
 
-	options.AddPolicy("RequireAuthenticated", policy =>
-		policy.RequireAuthenticatedUser());
-
-	options.AddPolicy("CanCreateEdit", policy =>
-		policy.RequireRole("Admin", "Invitado"));
+// Cabeceras X-Forwarded-* del proxy inverso (Caddy) dentro de la red de Docker.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+	options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+	options.KnownIPNetworks.Clear();
+	options.KnownProxies.Clear();
 });
 
 var app = builder.Build();
 
 // ========================================
-// CREAR USUARIO SUPER ADMIN POR DEFECTO
+// MIGRACIONES: paso explícito, no en cada arranque.
+//   dotnet Servidor_Sistema_Geologia.dll --migrate
 // ========================================
 
-using (var scope = app.Services.CreateScope())
+if (args.Contains("--migrate"))
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var userManager = services.GetRequiredService<UserManager<Servidor_Sistema_Geologia.Usuario>>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole<int>>>();
-        var configuration = services.GetRequiredService<IConfiguration>();
-        var logger = services.GetRequiredService<ILogger<Program>>();
-
-        // Crear roles si no existen
-        var roles = new[] { "Admin", "Premium", "Free", "Invitado" };
-        foreach (var role in roles)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-            {
-                await roleManager.CreateAsync(new IdentityRole<int>(role));
-                logger.LogInformation("✅ Rol '{Role}' creado exitosamente", role);
-            }
-        }
-
-        // Obtener configuración del super admin
-        var adminEmail = configuration["DefaultSuperAdmin:Email"] ?? "admin@sistemageologico.com";
-        var adminUserName = configuration["DefaultSuperAdmin:UserName"] ?? "superadmin";
-        var adminPassword = configuration["DefaultSuperAdmin:Password"] ?? "Admin123!";
-        var adminNombreCompleto = configuration["DefaultSuperAdmin:NombreCompleto"] ?? "Super Administrador";
-
-        // Verificar si el super admin ya existe
-        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
-        if (existingAdmin == null)
-        {
-            // Crear el usuario super admin
-            var superAdmin = new Servidor_Sistema_Geologia.Usuario
-            {
-                UserName = adminUserName,
-                Email = adminEmail,
-                NombreCompleto = adminNombreCompleto,
-                EmailConfirmed = true,
-                Rol = Servidor_Sistema_Geologia.RolUsuario.Admin,
-                FechaCreacion = DateTime.Now,
-                EstadoActivo = true
-            };
-
-            var createResult = await userManager.CreateAsync(superAdmin, adminPassword);
-            if (createResult.Succeeded)
-            {
-                // Asignar rol de Admin
-                await userManager.AddToRoleAsync(superAdmin, "Admin");
-                
-                logger.LogInformation("🚀 Super Administrador creado exitosamente:");
-                logger.LogInformation("   📧 Email: {Email}", adminEmail);
-                logger.LogInformation("   👤 Usuario: {UserName}", adminUserName);
-                logger.LogInformation("   🔑 Contraseña: {Password}", adminPassword);
-                logger.LogInformation("   🎯 Rol: Admin");
-            }
-            else
-            {
-                logger.LogError("❌ Error al crear Super Administrador:");
-                foreach (var error in createResult.Errors)
-                {
-                    logger.LogError("   - {Description}", error.Description);
-                }
-            }
-        }
-        else
-        {
-            logger.LogInformation("ℹ️ El Super Administrador ya existe: {Email}", adminEmail);
-            
-            // Verificar que tenga el rol de Admin
-            if (!await userManager.IsInRoleAsync(existingAdmin, "Admin"))
-            {
-                await userManager.AddToRoleAsync(existingAdmin, "Admin");
-                logger.LogInformation("✅ Rol Admin asignado al usuario existente: {Email}", adminEmail);
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "❌ Error al crear el Super Administrador por defecto");
-    }
+	using var scope = app.Services.CreateScope();
+	var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+	var db = scope.ServiceProvider.GetRequiredService<Servidor_Sistema_Geologia.SistemaGeologicoDbContext>();
+	logger.LogInformation("Aplicando migraciones del catálogo...");
+	await db.Database.MigrateAsync();
+	await SeedData.InitializeAsync(scope.ServiceProvider, logger);
+	logger.LogInformation("Migraciones y semilla aplicadas.");
+	return;
 }
 
-// Configurar el pipeline de solicitudes HTTP
+// Semilla idempotente al arrancar (roles, superadmin, filas "Desconocido").
+using (var scope = app.Services.CreateScope())
+{
+	var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+	try
+	{
+		await SeedData.InitializeAsync(scope.ServiceProvider, logger);
+	}
+	catch (Exception ex)
+	{
+		logger.LogError(ex, "No se pudo aplicar la semilla. ¿Faltan las migraciones? Ejecutar con --migrate.");
+	}
+}
+
+// ========================================
+// PIPELINE
+// ========================================
+
+app.UseForwardedHeaders();
+
 if (app.Environment.IsDevelopment())
 {
 	app.UseDeveloperExceptionPage();
@@ -353,55 +288,38 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-	app.UseExceptionHandler("/error");
+	// Respuesta genérica, sin detalles internos.
+	app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+	{
+		context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+		context.Response.ContentType = "application/json";
+		await context.Response.WriteAsync("{\"success\":false,\"message\":\"Error interno del servidor\"}");
+	}));
+	// La redirección a HTTPS la hace Caddy; HSTS se envía cuando la petición llegó por HTTPS.
 	app.UseHsts();
-	app.UseHttpsRedirection();
 }
 
 app.UseCors("AllowFrontend");
 
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-    context.Response.Headers.Append("X-Frame-Options", "DENY");
-    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-    context.Response.Headers.Append(
-        "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
-    );
-    await next();
+	context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+	context.Response.Headers.Append("X-Frame-Options", "DENY");
+	context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+	if (!context.Request.Path.StartsWithSegments("/swagger"))
+	{
+		context.Response.Headers.Append(
+			"Content-Security-Policy",
+			"default-src 'none'; frame-ancestors 'none';");
+	}
+	await next();
 });
 
-// UseRouting debe preceder a auth para que el endpoint matching ocurra
-// antes de que UseAuthorization evalúe las políticas [Authorize]
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();
-
-Console.WriteLine("🚀 Sistema Geológico API iniciado con JWT Authentication");
-Console.WriteLine("📋 Endpoints disponibles:");
-Console.WriteLine("   🔐 POST /api/auth/register - Registrar usuario");
-Console.WriteLine("   🔐 POST /api/auth/login - Login (devuelve JWT)");
-Console.WriteLine("   👥 GET /api/users - Listar usuarios (requiere token)");
-Console.WriteLine("   🌎 GET /api/paises - Listar países");
-Console.WriteLine("   🏞️ GET /api/provincias - Listar provincias");
-Console.WriteLine("   🗿 GET /api/elementos-geologicos - Listar todos los elementos geológicos");
-Console.WriteLine("   🗿 GET /api/elementos-geologicos?tipo=Fosil - Filtrar por tipo");
-Console.WriteLine("   🦕 GET /api/elementos-geologicos/fosiles - Listar fósiles");
-Console.WriteLine("   💎 GET /api/elementos-geologicos/minerales - Listar minerales");
-Console.WriteLine("   🪨 GET /api/elementos-geologicos/rocas - Listar rocas");
-Console.WriteLine("   ➕ POST /api/elementos-geologicos/fosiles - Crear fósil");
-Console.WriteLine("   ➕ POST /api/elementos-geologicos/minerales - Crear mineral");
-Console.WriteLine("   ➕ POST /api/elementos-geologicos/rocas - Crear roca");
-Console.WriteLine("\n🗺️ Endpoints GIS (PostGIS):");
-Console.WriteLine("   🌍 GET /api/geologiagis/geologia - Formaciones geológicas (GeoJSON)");
-Console.WriteLine("   🏛️ GET /api/geologiagis/provincias - Provincias (GeoJSON)");
-Console.WriteLine("   🇪🇨 GET /api/geologiagis/ecuador - Contorno de Ecuador (GeoJSON)");
-Console.WriteLine("   📍 GET /api/geologiagis/geologia/point?lat=&lon= - Geología en punto");
-Console.WriteLine("   📊 GET /api/geologiagis/estadisticas - Estadísticas geológicas");
-Console.WriteLine("   ℹ️ GET /api/geologiagis/info - Información del servicio GIS");
-Console.WriteLine("   📖 /swagger - Documentación API");
 
 app.Run();

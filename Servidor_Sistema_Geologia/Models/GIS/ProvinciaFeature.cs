@@ -8,7 +8,7 @@ namespace Servidor_Sistema_Geologia.Models.GIS
     /// Entidad que representa las provincias de Ecuador
     /// Mapea directamente a la tabla 'provincias' importada desde el shapefile de QGIS
     /// </summary>
-    [Table("provincias", Schema = "public")]
+    [Table("tb_provincias", Schema = "public")]
     public class ProvinciaFeature
     {
         /// <summary>

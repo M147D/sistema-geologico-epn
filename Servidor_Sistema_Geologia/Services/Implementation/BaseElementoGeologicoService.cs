@@ -392,6 +392,7 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
 
     protected virtual async Task<Ubicacion> CrearUbicacionAsync(TCreateDto createDto, int? paisId = null, int? provinciaId = null)
     {
+        var desconocido = await Data.SeedData.EnsureUbicacionDesconocidaAsync(_context);
         try
         {
             // Create location with basic data and foreign keys
@@ -401,9 +402,9 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
                 Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
                 Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
                 Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
-                // Establecer ambas FK si están disponibles
-                PaisId = paisId ?? 1, // Valor por defecto: 1 (puede ser "Desconocido" si existe)
-                ProvinciaId = provinciaId ?? 1, // Valor por defecto: 1
+                // Sin país o provincia: filas de referencia "Desconocido" (Data/SeedData.cs)
+                PaisId = paisId ?? desconocido.PaisId,
+                ProvinciaId = provinciaId ?? desconocido.ProvinciaId,
                 EstadoActivo = true,
                 FechaCreacion = DateTime.Now
             };
@@ -427,8 +428,8 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
                 Longitud = ObtenerValorUbicacion(createDto, "Longitud") ?? "0.0",
                 Localidad = ObtenerValorUbicacion(createDto, "Localidad") ?? "Desconocida",
                 Leyenda = ObtenerValorUbicacion(createDto, "Leyenda") ?? "Sin leyenda",
-                PaisId = 1, // Valor por defecto
-                ProvinciaId = 1, // Valor por defecto
+                PaisId = desconocido.PaisId,
+                ProvinciaId = desconocido.ProvinciaId,
                 EstadoActivo = true,
                 FechaCreacion = DateTime.Now
             };

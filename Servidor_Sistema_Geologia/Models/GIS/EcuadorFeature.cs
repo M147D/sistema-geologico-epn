@@ -8,7 +8,7 @@ namespace Servidor_Sistema_Geologia.Models.GIS
     /// Entidad que representa el contorno del país Ecuador
     /// Mapea directamente a la tabla 'ecuador' importada desde el shapefile de QGIS
     /// </summary>
-    [Table("ecuador", Schema = "public")]
+    [Table("tb_ecuador", Schema = "public")]
     public class EcuadorFeature
     {
         /// <summary>

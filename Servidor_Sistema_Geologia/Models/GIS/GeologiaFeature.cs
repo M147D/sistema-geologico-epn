@@ -8,7 +8,7 @@ namespace Servidor_Sistema_Geologia.Models.GIS
     /// Entidad que representa las formaciones geológicas de Ecuador
     /// Mapea directamente a la tabla 'geologia' importada desde el shapefile de QGIS
     /// </summary>
-    [Table("geologia", Schema = "public")]
+    [Table("tb_geologia", Schema = "public")]
     public class GeologiaFeature
     {
         /// <summary>

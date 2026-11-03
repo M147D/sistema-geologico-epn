@@ -260,7 +260,12 @@ public class SistemaGeologicoDbContext : IdentityDbContext<Usuario, Microsoft.As
 		modelBuilder.Entity<ElementoGeologico>()
 			.Property(e => e.FechaCreacion)
 			.IsRequired()
-			.HasDefaultValueSql("GETDATE()");
+			.HasDefaultValueSql("LOCALTIMESTAMP");
+
+		// uint? no tiene tipo nativo en PostgreSQL: se guarda como bigint (igual que en SQL Server).
+		modelBuilder.Entity<ElementoGeologico>()
+			.Property(e => e.Ejemplares)
+			.HasConversion<long?>();
 
 		modelBuilder.Entity<ElementoGeologico>()
 			.Property(e => e.EstadoActivo)

@@ -1,6 +1,10 @@
-@Servidor_Sistema_Geologia_HostAddress = http://localhost:5095
+@api = http://localhost:5095
 
-GET {{Servidor_Sistema_Geologia_HostAddress}}/weatherforecast/
-Accept: application/json
+GET {{api}}/health
 
 ###
+
+POST {{api}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@example.com", "password": "<contraseña>" }

@@ -3,9 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Servidor_Sistema_Geologia.DTO.Gallery;
 using Servidor_Sistema_Geologia.Services.Interfaces;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.Runtime.Versioning;
 using System.Security.Claims;
 
 namespace Servidor_Sistema_Geologia.Controllers;
@@ -17,15 +14,18 @@ public class FotoElementosController : ControllerBase
     private readonly IFotoElementoService _fotoService;
     private readonly ILogger<FotoElementosController> _logger;
     private readonly IMemoryCache _cache;
+    private readonly IImageProcessingService _imageProcessing;
 
     public FotoElementosController(
         IFotoElementoService fotoService,
         ILogger<FotoElementosController> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IImageProcessingService imageProcessing)
     {
         _fotoService = fotoService;
         _logger = logger;
         _cache = cache;
+        _imageProcessing = imageProcessing;
     }
 
     /// <summary>
@@ -68,11 +68,12 @@ public class FotoElementosController : ControllerBase
             if (imagenBytes == null || imagenBytes.Length == 0)
                 return NotFound("Imagen no encontrada");
 
-            if (thumb && OperatingSystem.IsWindows())
-                imagenBytes = ResizeImage(imagenBytes, 300, 200);
+            if (thumb)
+                imagenBytes = _imageProcessing.CreateThumbnail(imagenBytes, 300, 200);
 
-            if (!isPremium && OperatingSystem.IsWindows())
-                imagenBytes = ApplyWatermark(imagenBytes);
+            // Falla cerrado: si la marca no se puede aplicar, se lanza y no se entrega la foto.
+            if (!isPremium)
+                imagenBytes = _imageProcessing.ApplyWatermark(imagenBytes);
 
             _cache.Set(cacheKey, imagenBytes, new MemoryCacheEntryOptions
             {
@@ -349,137 +350,5 @@ public class FotoElementosController : ControllerBase
         _cache.Remove($"foto_{id}_wm_full");
         _cache.Remove($"foto_{id}_clean_thumb");
         _cache.Remove($"foto_{id}_wm_thumb");
-    }
-
-    private const string WatermarkText = "Museo Petrográfico Tomas Feininger";
-
-    [SupportedOSPlatform("windows")]
-    private byte[] ResizeImage(byte[] imageBytes, int maxWidth, int maxHeight)
-    {
-        try
-        {
-            using var inStream = new MemoryStream(imageBytes);
-            using var original = Image.FromStream(inStream);
-
-            float ratioX = (float)maxWidth / original.Width;
-            float ratioY = (float)maxHeight / original.Height;
-            float ratio = Math.Min(ratioX, ratioY);
-
-            int newWidth = Math.Max(1, (int)(original.Width * ratio));
-            int newHeight = Math.Max(1, (int)(original.Height * ratio));
-
-            using var bitmap = new Bitmap(newWidth, newHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using var graphics = Graphics.FromImage(bitmap);
-
-            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-
-            graphics.DrawImage(original, 0, 0, newWidth, newHeight);
-
-            using var outStream = new MemoryStream();
-            bitmap.Save(outStream, ImageFormat.Jpeg);
-            return outStream.ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al redimensionar imagen {Width}x{Height}", maxWidth, maxHeight);
-            return imageBytes;
-        }
-    }
-
-    [SupportedOSPlatform("windows")]
-    private byte[] ApplyWatermark(byte[] imageBytes)
-    {
-        try
-        {
-            using var inStream = new MemoryStream(imageBytes);
-            using var original = Image.FromStream(inStream);
-
-            // Format32bppArgb garantiza soporte para transparencia y que Graphics.FromImage no falle
-            using var bitmap = new Bitmap(original.Width, original.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using var graphics = Graphics.FromImage(bitmap);
-
-            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-
-            // Dibujar imagen original primero
-            graphics.DrawImage(original, 0, 0, original.Width, original.Height);
-
-            // Aplicar marca de agua
-            ApplyMultipleWatermarks(graphics, bitmap.Width, bitmap.Height);
-
-            using var outStream = new MemoryStream();
-            bitmap.Save(outStream, ImageFormat.Jpeg);
-            return outStream.ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al aplicar marca de agua");
-            return imageBytes;
-        }
-    }
-
-    [SupportedOSPlatform("windows")]
-    private void ApplyMultipleWatermarks(Graphics graphics, int imageWidth, int imageHeight)
-    {
-        using var fontLarge = new Font("Arial", 54, FontStyle.Bold);
-        using var fontPattern = new Font("Arial", 24, FontStyle.Bold);
-
-        // Texto blanco con sombra oscura para visibilidad sobre cualquier fondo
-        using var brushWhite = new SolidBrush(Color.FromArgb(180, 255, 255, 255));
-        using var brushShadow = new SolidBrush(Color.FromArgb(130, 0, 0, 0));
-        using var brushPattern = new SolidBrush(Color.FromArgb(110, 255, 255, 255));
-
-        // Marca grande centrada
-        var textSize = graphics.MeasureString(WatermarkText, fontLarge);
-        float xCenter = (imageWidth - textSize.Width) / 2;
-        float yCenter = (imageHeight - textSize.Height) / 2;
-
-        // Sombra (desplazada 2px) para contraste
-        graphics.DrawString(WatermarkText, fontLarge, brushShadow, xCenter + 2, yCenter + 2);
-        // Texto principal blanco
-        graphics.DrawString(WatermarkText, fontLarge, brushWhite, xCenter, yCenter);
-
-        // Patrón repetido rotado
-        CreateWatermarkPattern(graphics, imageWidth, imageHeight, fontPattern, brushPattern);
-    }
-
-    [SupportedOSPlatform("windows")]
-    private void CreateWatermarkPattern(Graphics graphics, int imageWidth, int imageHeight, Font font, Brush brush)
-    {
-        var textSize = graphics.MeasureString(WatermarkText, font);
-        float spacingX = textSize.Width + 60;
-        float spacingY = textSize.Height + 50;
-
-        var state = graphics.Save();
-        try
-        {
-            // Rotar el patrón -30° alrededor del centro de la imagen
-            graphics.TranslateTransform(imageWidth / 2f, imageHeight / 2f);
-            graphics.RotateTransform(-30);
-            graphics.TranslateTransform(-imageWidth / 2f, -imageHeight / 2f);
-
-            int cols = (int)Math.Ceiling(imageWidth * 1.5f / spacingX) + 2;
-            int rows = (int)Math.Ceiling(imageHeight * 1.5f / spacingY) + 2;
-            float startX = -imageWidth * 0.25f;
-            float startY = -imageHeight * 0.25f;
-
-            for (int row = 0; row < rows; row++)
-            {
-                float offsetX = (row % 2 == 0) ? 0 : spacingX / 2;
-                for (int col = 0; col < cols; col++)
-                {
-                    graphics.DrawString(WatermarkText, font, brush,
-                        startX + col * spacingX + offsetX,
-                        startY + row * spacingY);
-                }
-            }
-        }
-        finally
-        {
-            graphics.Restore(state);
-        }
     }
 }
