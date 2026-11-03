@@ -219,3 +219,44 @@ decidir por el museo).
 servidor. Al cerrarlo: DEP-01.
 
 **Relacionados:** [DEP-01](despliegue/vps-docker.md).
+
+## PEN-12 · Corregir los hallazgos de la auditoría de seguridad del 2026-11-03
+
+**Estado:** pendiente (2026-11-03).
+
+**Situación actual:** auditoría con la skill `security-audit`, perfil `quick`
+(pasada parcial), sobre el commit `6c91245`. El informe vive fuera del repo,
+en `~/security-audit-skill/sistema-geologico-epn/run-1/` (`REPORT.md`,
+`findings.json`). Seis hallazgos confirmados en un sandbox aislado, y uno por
+validar:
+
+- **Medio:** un JWT sigue dando acceso con su rol hasta 12 h después de
+  desactivar, degradar o cambiar la contraseña de la cuenta
+  (`Program.cs`: sin `OnTokenValidated`; logout sin efecto).
+- **Medio:** las regex de `NoInjectionAttribute` tienen costo cuadrático y se
+  aplican a campos sin longitud máxima en `register` y `login` anónimos
+  (64 KB → ~10 s de CPU por petición).
+- **Bajo:** cualquiera puede bloquear cualquier cuenta, superadmin incluido,
+  con 3 logins fallidos (bloqueo por cuenta sin límite por cliente).
+- **Bajo:** las fotos borradas lógicamente, o las de elementos borrados, siguen
+  saliendo por `imagen/{id}` y `galeria/{id}` (un Premium recibe el original).
+- **Bajo:** `solicitar-informe` permite enviar correos sin límite, con el
+  correo del solicitante tomado del cuerpo y no del token.
+- **Bajo:** `solicitar-informe` resuelve elementos borrados (oráculo de
+  existencia y correo sobre registros borrados).
+- **Por validar:** la decodificación de imágenes no tiene límite de píxeles
+  (un PNG de ~1 KB de 3000×3000 sube ~66 MB la memoria por cada vista sin
+  caché); el efecto depende de la memoria del contenedor en producción.
+
+**Problema que resolvería:** las fronteras de sesión, de costo y de borrado
+lógico que el informe documenta.
+
+**Propuesta inicial:** la corrección mínima de cada hallazgo está en
+`REPORT.md` y `FINDINGS-DETAIL.md`. Después, una corrida `standard` que
+empiece por las 4 unidades diferidas.
+
+**Restricciones:** cada corrección necesita su caso de regresión (el informe
+propone uno por hallazgo). Al cerrarlo: ARQ-01 (estado de seguridad) y un PS
+por cada hallazgo corregido.
+
+**Relacionados:** [ARQ-01](arquitectura/diagrama.md), PEN-08.
