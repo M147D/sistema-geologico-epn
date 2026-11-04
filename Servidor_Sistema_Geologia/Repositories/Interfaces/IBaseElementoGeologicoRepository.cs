@@ -11,7 +11,7 @@ public interface IBaseElementoGeologicoRepository<T> where T : ElementoGeologico
 {
     // 🔍 CONSULTAS BASICAS
     Task<T?> GetByIdAsync(int id);
-    Task<T?> GetByIdWithDetailsAsync(int id);
+    Task<T?> GetByIdWithDetailsAsync(int id, bool incluirFotosInactivas = false);
     Task<IEnumerable<T>> GetAllActiveAsync();
     Task<PaginatedElementosGeologicosDto> GetAllAsync(ElementoGeologicoFilterDto filter);
     

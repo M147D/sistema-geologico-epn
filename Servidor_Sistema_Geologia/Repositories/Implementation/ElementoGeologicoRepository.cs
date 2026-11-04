@@ -30,7 +30,8 @@ public class ElementoGeologicoRepository : IElementoGeologicoRepository
                 .ThenInclude(u => u!.Provincia)
                 .ThenInclude(p => p!.Pais)
             .Include(e => e.Galeria)
-            .FirstOrDefaultAsync(e => e.Id == id);
+            // Solo elementos activos: un elemento borrado no existe para esta ruta (PEN-12).
+            .FirstOrDefaultAsync(e => e.Id == id && e.EstadoActivo);
 
         // Metadatos de fotos sin la columna imagen (REV-01, H-09).
         if (elemento?.Galeria != null)

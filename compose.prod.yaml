@@ -48,6 +48,9 @@ services:
       context: Servidor_Sistema_Geologia
       dockerfile: ../docker/prod/api.Dockerfile
     image: sistemageologico-api:1.0.0
+    # Tope de memoria del proceso: acota el daño de una decodificación inesperada aunque
+    # la API ya rechaza imágenes de más de 40 MP (PEN-12).
+    mem_limit: 1g
     read_only: true
     tmpfs:
       - /tmp

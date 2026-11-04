@@ -6,6 +6,7 @@ namespace Servidor_Sistema_Geologia.DTO.Auth;
 public class LoginDto
 {
     [Required(ErrorMessage = "El email es obligatorio")]
+    [StringLength(254, ErrorMessage = "El email no puede exceder 254 caracteres")]
     [EmailAddress(ErrorMessage = "El formato del email no es válido")]
     [RegularExpression(@"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$", ErrorMessage = "El formato del email no es válido")]
     [NoInjection]

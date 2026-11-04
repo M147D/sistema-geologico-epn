@@ -49,4 +49,11 @@ public class ElementoGeologico : EntidadAuditable
 	public int? UbicacionId { get; set; }
 	public Ubicacion? Ubicacion { get; set; }
 	public GaleriaElementoGeologico? Galeria { get; set; }
+
+	/// <summary>
+	/// Token de concurrencia optimista: la columna de sistema xmin de PostgreSQL. Una
+	/// escritura basada en una lectura vieja falla en lugar de pisar otra (PEN-12).
+	/// </summary>
+	[System.ComponentModel.DataAnnotations.Timestamp]
+	public uint Version { get; set; }
 }

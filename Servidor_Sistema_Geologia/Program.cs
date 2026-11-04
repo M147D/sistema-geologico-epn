@@ -4,12 +4,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Servidor_Sistema_Geologia;
 using Servidor_Sistema_Geologia.DAL;
 using Servidor_Sistema_Geologia.Data;
 using Servidor_Sistema_Geologia.Repositories.Implementation;
 using Servidor_Sistema_Geologia.Repositories.Interfaces;
 using Servidor_Sistema_Geologia.Services.Implementation;
 using Servidor_Sistema_Geologia.Services.Interfaces;
+using System.Security.Claims;
 using System.Text;
 
 // Las columnas de fecha del modelo son "timestamp without time zone" y el código
@@ -84,7 +88,9 @@ builder.Services.AddIdentity<Servidor_Sistema_Geologia.Usuario, IdentityRole<int
 	options.Password.RequiredUniqueChars = 1;
 
 	options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
-	options.Lockout.MaxFailedAccessAttempts = 3;
+	// 10 y no 3: con el límite por IP del login, un tercero ya no bloquea una cuenta
+	// con tres peticiones (PEN-12). Sigue acotando la fuerza bruta distribuida.
+	options.Lockout.MaxFailedAccessAttempts = 10;
 	options.Lockout.AllowedForNewUsers = true;
 
 	options.User.AllowedUserNameCharacters =
@@ -162,17 +168,30 @@ builder.Services.AddAuthentication(options =>
 
 	options.Events = new JwtBearerEvents
 	{
+		// Solo registra: la respuesta 401 la escribe OnChallenge. Escribir aquí dejaba que
+		// las acciones anónimas siguieran con la respuesta ya iniciada.
 		OnAuthenticationFailed = context =>
 		{
 			var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
 			logger.LogWarning("JWT inválido: {Message}", context.Exception.Message);
-			context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-			context.Response.ContentType = "application/json";
-			return context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
+			return Task.CompletedTask;
+		},
+		// Revalidación por petición (PEN-12): el token vale solo mientras el usuario siga
+		// activo, con el mismo rol y el mismo sello de seguridad que cuando se emitió.
+		// Desactivar, degradar, cambiar la contraseña o cerrar sesión lo invalida al instante.
+		OnTokenValidated = async context =>
+		{
+			var principal = context.Principal!;
+			var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<Servidor_Sistema_Geologia.Usuario>>();
+			var id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+			var usuario = id == null ? null : await userManager.FindByIdAsync(id);
+			if (usuario == null
+				|| !usuario.EstadoActivo
+				|| principal.FindFirstValue(ClaimTypes.Role) != usuario.Rol.ToString()
+				|| principal.FindFirstValue(JwtService.SecurityStampClaim) != usuario.SecurityStamp)
 			{
-				success = false,
-				message = "Token inválido o expirado"
-			}));
+				context.Fail("Sesión revocada");
+			}
 		},
 		OnChallenge = context =>
 		{
@@ -240,6 +259,28 @@ builder.Services.AddCors(options =>
 	});
 });
 
+// Límites de frecuencia (PEN-12). Responden 429 sin hacer el trabajo.
+builder.Services.AddRateLimiter(options =>
+{
+	options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+	static string Ip(HttpContext ctx) => ctx.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
+
+	// Login y registro: por IP del cliente.
+	options.AddPolicy(PoliticasLimite.Auth, ctx => RateLimitPartition.GetFixedWindowLimiter(
+		"auth:" + Ip(ctx), _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+	// Solicitud de informe por correo: por usuario...
+	options.AddPolicy(PoliticasLimite.Informe, ctx => RateLimitPartition.GetFixedWindowLimiter(
+		"informe:" + (ctx.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? Ip(ctx)),
+		_ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+
+	// ...y en total, para que muchas cuentas autorregistradas no inunden el correo.
+	options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+		ctx.Request.Path.Value?.EndsWith("/solicitar-informe", StringComparison.OrdinalIgnoreCase) == true
+			? RateLimitPartition.GetFixedWindowLimiter("informe-global", _ => new FixedWindowRateLimiterOptions { PermitLimit = 50, Window = TimeSpan.FromHours(1), QueueLimit = 0 })
+			: RateLimitPartition.GetNoLimiter("sin-limite"));
+});
+
 builder.Services.AddAuthorization(options =>
 {
 	options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
@@ -251,8 +292,15 @@ builder.Services.AddAuthorization(options =>
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
 	options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+	// Solo se confía en proxys de redes privadas (Caddy dentro de la red de Docker), y
+	// solo en el último salto: un cliente no puede falsificar su IP (PEN-12). Caddy
+	// reemplaza el X-Forwarded-For que manda el cliente por la IP real.
 	options.KnownIPNetworks.Clear();
 	options.KnownProxies.Clear();
+	options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("10.0.0.0/8"));
+	options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+	options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("192.168.0.0/16"));
+	options.ForwardLimit = 1;
 });
 
 var app = builder.Build();
@@ -336,6 +384,7 @@ app.Use(async (context, next) =>
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapControllers();

@@ -21,11 +21,14 @@ public class FotoElementoRepository : IFotoElementoRepository
             .FirstOrDefaultAsync(f => f.Id == id);
     }
 
-    public async Task<IEnumerable<FotoElemento>> GetByGaleriaIdAsync(int galeriaId)
+    // Política única de borrado lógico (PEN-12): fuera de Admin, solo fotos activas de
+    // galerías y elementos activos.
+    public async Task<IEnumerable<FotoElemento>> GetByGaleriaIdAsync(int galeriaId, bool incluirInactivos = false)
     {
         return await _context.FotosElementos
             .AsNoTracking()
             .Where(f => f.GaleriaElementosGeologicoId == galeriaId)
+            .Where(f => incluirInactivos || (f.EstadoActivo && f.Galeria!.EstadoActivo && f.Galeria.ElementoGeologico!.EstadoActivo))
             .Select(FotoProyecciones.SinImagen)
             .ToListAsync();
     }
@@ -37,33 +40,55 @@ public class FotoElementoRepository : IFotoElementoRepository
         return foto;
     }
 
+    public async Task<bool> EsVisibleAsync(int id) =>
+        await _context.FotosElementos.AnyAsync(f => f.Id == id && f.EstadoActivo
+            && f.Galeria!.EstadoActivo && f.Galeria.ElementoGeologico!.EstadoActivo);
+
+    public async Task<bool> GaleriaActivaAsync(int galeriaId) =>
+        await _context.GaleriaElementosGeologicos.AnyAsync(g => g.Id == galeriaId && g.EstadoActivo
+            && g.ElementoGeologico!.EstadoActivo);
+
+    // La entidad ya viene rastreada: SaveChanges escribe solo las columnas que cambiaron,
+    // y el token xmin hace fallar la escritura si la fila cambió desde la lectura (PEN-12).
     public async Task<FotoElemento> UpdateAsync(FotoElemento foto)
     {
-        _context.FotosElementos.Update(foto);
-        await _context.SaveChangesAsync();
+        if (_context.Entry(foto).State == EntityState.Detached)
+            _context.FotosElementos.Update(foto);
+        await GuardarAsync();
         return foto;
     }
 
-    public async Task DeleteAsync(int id)
+    public async Task DeleteAsync(int id, int? usuarioId = null)
     {
         var foto = await _context.FotosElementos.FindAsync(id);
         if (foto != null)
         {
             foto.EstadoActivo = false;
+            foto.FechaEliminacion = DateTime.Now;
+            foto.UsuarioEliminacionId = usuarioId;
             foto.FechaActualizacion = DateTime.Now;
-            await _context.SaveChangesAsync();
+            await GuardarAsync();
         }
     }
 
-    public async Task RestoreAsync(int id)
+    public async Task RestoreAsync(int id, int? usuarioId = null)
     {
         var foto = await _context.FotosElementos.FindAsync(id);
         if (foto != null)
         {
             foto.EstadoActivo = true;
+            foto.FechaEliminacion = null;
+            foto.UsuarioEliminacionId = null;
             foto.FechaActualizacion = DateTime.Now;
-            await _context.SaveChangesAsync();
+            foto.UsuarioActualizacionId = usuarioId;
+            await GuardarAsync();
         }
+    }
+
+    private async Task GuardarAsync()
+    {
+        try { await _context.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException ex) { throw new ConflictoConcurrenciaException(ex); }
     }
 
     public async Task<bool> ExistsAsync(int id)

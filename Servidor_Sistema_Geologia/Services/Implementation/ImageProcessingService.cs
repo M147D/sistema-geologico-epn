@@ -124,8 +124,37 @@ public sealed class ImageProcessingService : IImageProcessingService, IDisposabl
         return data.ToArray();
     }
 
-    private static SKBitmap Decode(byte[] imageBytes) =>
-        SKBitmap.Decode(imageBytes) ?? throw new InvalidDataException("El archivo no es una imagen válida");
+    /// <summary>Máximo de píxeles por imagen (40 MP: unos 160 MB en RGBA al decodificar).</summary>
+    public const long MaxPixeles = 40_000_000;
+    public const int MaxLado = 12_000;
+
+    private static readonly SKEncodedImageFormat[] FormatosPermitidos =
+        { SKEncodedImageFormat.Jpeg, SKEncodedImageFormat.Png, SKEncodedImageFormat.Webp };
+
+    // Lee solo la cabecera: el costo no depende del tamaño en píxeles (PEN-12).
+    public string? ValidarImagen(byte[] imageBytes)
+    {
+        using var data = SKData.CreateCopy(imageBytes);
+        using var codec = SKCodec.Create(data);
+        if (codec == null)
+            return "El archivo no es una imagen válida";
+        if (!FormatosPermitidos.Contains(codec.EncodedFormat))
+            return "Formato no permitido: usar JPEG, PNG o WebP";
+        var info = codec.Info;
+        if (info.Width <= 0 || info.Height <= 0 || info.Width > MaxLado || info.Height > MaxLado
+            || (long)info.Width * info.Height > MaxPixeles)
+            return $"La imagen es demasiado grande ({info.Width}x{info.Height}); máximo {MaxLado} px por lado y {MaxPixeles / 1_000_000} MP";
+        return null;
+    }
+
+    // También antes de cada decodificación: filas guardadas antes de la validación de
+    // subida no pueden forzar una asignación de memoria sin límite.
+    private SKBitmap Decode(byte[] imageBytes)
+    {
+        if (ValidarImagen(imageBytes) is string error)
+            throw new InvalidDataException(error);
+        return SKBitmap.Decode(imageBytes) ?? throw new InvalidDataException("El archivo no es una imagen válida");
+    }
 
     private static byte[] Encode(SKBitmap bitmap)
     {

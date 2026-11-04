@@ -240,6 +240,12 @@ namespace Servidor_Sistema_Geologia.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<string>("tipoElemento")
                         .IsRequired()
                         .HasMaxLength(21)
@@ -321,6 +327,12 @@ namespace Servidor_Sistema_Geologia.Migrations
                     b.Property<int?>("UsuarioEliminacionId")
                         .HasColumnType("integer")
                         .HasColumnName("usuarioEliminacionId");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

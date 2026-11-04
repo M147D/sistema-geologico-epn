@@ -33,11 +33,13 @@ public class FotoElementoService : IFotoElementoService
         }
     }
 
-    public async Task<IEnumerable<FotoElementoDto>> GetByGaleriaIdAsync(int galeriaId)
+    public Task<bool> EsFotoVisibleAsync(int id) => _fotoRepository.EsVisibleAsync(id);
+
+    public async Task<IEnumerable<FotoElementoDto>> GetByGaleriaIdAsync(int galeriaId, bool isAdmin = false)
     {
         try
         {
-            var fotos = await _fotoRepository.GetByGaleriaIdAsync(galeriaId);
+            var fotos = await _fotoRepository.GetByGaleriaIdAsync(galeriaId, incluirInactivos: isAdmin);
             return fotos.Select(MapToDto);
         }
         catch (Exception ex)
@@ -51,9 +53,14 @@ public class FotoElementoService : IFotoElementoService
     {
         try
         {
+            // No se agregan fotos a galerías o elementos borrados (PEN-12).
+            if (!await _fotoRepository.GaleriaActivaAsync(galeriaId))
+                throw new KeyNotFoundException($"Galería con ID {galeriaId} no encontrada");
+
             var foto = new FotoElemento
             {
                 GaleriaElementosGeologicoId = galeriaId,
+                UsuarioCreacionId = usuarioId,
                 TipoFoto = createDto.TipoFoto,
                 DescripcionEspecifica = createDto.DescripcionEspecifica,
                 Imagen = createDto.Imagen ?? new byte[0],
@@ -76,10 +83,13 @@ public class FotoElementoService : IFotoElementoService
         try
         {
             var foto = await _fotoRepository.GetByIdAsync(id);
-            if (foto == null)
+            // Una foto borrada no se edita: primero hay que restaurarla (PEN-12).
+            if (foto == null || !foto.EstadoActivo)
             {
                 throw new KeyNotFoundException($"Foto con ID {id} no encontrada");
             }
+            foto.UsuarioActualizacionId = usuarioId;
+            foto.FechaActualizacion = DateTime.Now;
 
             // Actualizar propiedades
             foto.TipoFoto = updateDto.TipoFoto;
@@ -110,7 +120,7 @@ public class FotoElementoService : IFotoElementoService
                 throw new KeyNotFoundException($"Foto con ID {id} no encontrada");
             }
 
-            await _fotoRepository.DeleteAsync(id);
+            await _fotoRepository.DeleteAsync(id, usuarioId);
         }
         catch (Exception ex)
         {
@@ -128,7 +138,7 @@ public class FotoElementoService : IFotoElementoService
                 throw new KeyNotFoundException($"Foto con ID {id} no encontrada");
             }
 
-            await _fotoRepository.RestoreAsync(id);
+            await _fotoRepository.RestoreAsync(id, usuarioId);
         }
         catch (Exception ex)
         {

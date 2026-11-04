@@ -12,4 +12,11 @@ public class FotoElemento : EntidadAuditable
 	[RegularExpression(@"^[a-zA-Z0-9\s,.-]+$", ErrorMessage = "La descripción solo puede contener letras, números, espacios y algunos caracteres especiales.")]
 	public string DescripcionEspecifica { get; set; } = "Vacío";
 	public GaleriaElementoGeologico? Galeria { get; set; }
+
+	/// <summary>
+	/// Token de concurrencia optimista: la columna de sistema xmin de PostgreSQL. Una
+	/// escritura basada en una lectura vieja falla en lugar de pisar otra (PEN-12).
+	/// </summary>
+	[System.ComponentModel.DataAnnotations.Timestamp]
+	public uint Version { get; set; }
 }

@@ -6,18 +6,20 @@ namespace Servidor_Sistema_Geologia.DTO.Auth;
 public class RegisterDto
 {
     [Required(ErrorMessage = "El email es obligatorio")]
+    [StringLength(254, ErrorMessage = "El email no puede exceder 254 caracteres")]
     [EmailAddress(ErrorMessage = "El formato del email no es válido")]
     [RegularExpression(@"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$", ErrorMessage = "El formato del email no es válido")]
     [NoInjection]
     public string Email { get; set; } = "Sin definir";
 
     [Required(ErrorMessage = "La contraseña es obligatoria")]
-    [MinLength(6, ErrorMessage = "La contraseña debe tener al menos 6 caracteres")]
+    [StringLength(100, MinimumLength = 6, ErrorMessage = "La contraseña debe tener entre 6 y 100 caracteres")]
     [DataType(DataType.Password)]
     [NoInjection]
     public string Password { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "La confirmación de contraseña es obligatoria")]
+    [StringLength(100, ErrorMessage = "La confirmación no puede exceder 100 caracteres")]
     [Compare("Password", ErrorMessage = "Las contraseñas no coinciden")]
     [DataType(DataType.Password)]
     [NoInjection]

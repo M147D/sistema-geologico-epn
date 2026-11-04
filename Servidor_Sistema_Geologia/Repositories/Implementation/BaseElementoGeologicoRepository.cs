@@ -34,7 +34,7 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
             .FirstOrDefaultAsync(e => e.Id == id && e.EstadoActivo);
     }
 
-    public virtual async Task<T?> GetByIdWithDetailsAsync(int id)
+    public virtual async Task<T?> GetByIdWithDetailsAsync(int id, bool incluirFotosInactivas = false)
     {
         var elemento = await _context.ElementosGeologicos
             .OfType<T>()
@@ -48,17 +48,18 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
             .Include(e => e.UsuarioEliminacion)
             .FirstOrDefaultAsync(e => e.Id == id && e.EstadoActivo);
 
-        await CargarFotosSinImagenAsync(elemento?.Galeria);
+        await CargarFotosSinImagenAsync(elemento?.Galeria, incluirFotosInactivas);
         return elemento;
     }
 
     /// <summary>Metadatos de las fotos de la galería, sin leer los bytes (REV-01, H-09).</summary>
-    protected async Task CargarFotosSinImagenAsync(Galeria.GaleriaElementoGeologico? galeria)
+    /// Fuera de Admin, solo fotos activas: misma política que por-elemento (PEN-12).
+    protected async Task CargarFotosSinImagenAsync(Galeria.GaleriaElementoGeologico? galeria, bool incluirInactivas)
     {
         if (galeria == null) return;
         galeria.Fotos = await _context.FotosElementos
             .AsNoTracking()
-            .Where(f => f.GaleriaElementosGeologicoId == galeria.Id)
+            .Where(f => f.GaleriaElementosGeologicoId == galeria.Id && (incluirInactivas || f.EstadoActivo))
             .Select(FotoProyecciones.SinImagen)
             .ToListAsync();
     }
@@ -177,9 +178,19 @@ public abstract class BaseElementoGeologicoRepository<T> : IBaseElementoGeologic
     public virtual async Task<T> UpdateAsync(T elemento)
     {
         elemento.FechaActualizacion = DateTime.Now;
-        
-        _context.Set<T>().Update(elemento);
-        await _context.SaveChangesAsync();
+
+        // Entidad rastreada: SaveChanges escribe solo las columnas modificadas, y el token
+        // xmin detecta si otra petición cambió o borró la fila desde la lectura (PEN-12).
+        if (_context.Entry(elemento).State == EntityState.Detached)
+            _context.Set<T>().Update(elemento);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConflictoConcurrenciaException(ex);
+        }
 
         _logger.LogInformation("✏️ {ElementType} actualizado: {Nombre} (ID: {Id})", 
             ElementTypeName, elemento.Nombre, elemento.Id);

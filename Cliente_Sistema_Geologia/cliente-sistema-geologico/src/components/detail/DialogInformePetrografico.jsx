@@ -10,6 +10,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 
 const DialogInformePetrografico = ({ open, onClose, onSubmit, elemento, userEmail }) => {
   const [correoSolicitante, setCorreoSolicitante] = useState(userEmail || '');
+  // setCorreoSolicitante solo se usa para sincronizar con la sesión al abrir el diálogo.
   const [observaciones, setObservaciones] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState(null);
@@ -87,21 +88,16 @@ const DialogInformePetrografico = ({ open, onClose, onSubmit, elemento, userEmai
         <Divider sx={{ my: 2 }} />
 
         {/* Correo del solicitante */}
+        {/* El servidor usa siempre el correo de la sesión (no se puede cambiar aquí). */}
         <TextField
           label="Correo del solicitante"
           value={correoSolicitante}
-          onChange={e => setCorreoSolicitante(e.target.value)}
           fullWidth
-          required
           type="email"
           size="small"
           sx={{ mb: 2 }}
-          error={correoSolicitante.length > 0 && !emailValido}
-          helperText={
-            correoSolicitante.length > 0 && !emailValido
-              ? 'Ingrese un correo electrónico válido'
-              : 'Se usará para contactarle con la respuesta del informe'
-          }
+          slotProps={{ input: { readOnly: true } }}
+          helperText="Es el correo de su cuenta; se usará para contactarle con la respuesta del informe"
           disabled={enviando || yaEnviado}
         />
 

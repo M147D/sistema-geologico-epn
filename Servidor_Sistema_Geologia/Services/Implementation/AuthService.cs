@@ -180,27 +180,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public Task<AuthResponseDto> LogoutAsync()
+    // Cerrar sesión renueva el sello de seguridad: el token deja de valer en el servidor
+    // (y también las demás sesiones del mismo usuario) (PEN-12).
+    public async Task<AuthResponseDto> LogoutAsync(string? userId)
     {
         try
         {
-            // El token simplemente expira o el cliente lo descarta
-            _logger.LogInformation("Usuario cerró sesión exitosamente");
-
-            return Task.FromResult(new AuthResponseDto
-            {
-                Success = true,
-                Message = "Logout exitoso"
-            });
+            var usuario = userId == null ? null : await _authRepository.FindByIdAsync(userId);
+            if (usuario != null)
+                await _authRepository.RevocarSesionesAsync(usuario);
+            _logger.LogInformation("Usuario {UserId} cerró sesión", userId);
+            return new AuthResponseDto { Success = true, Message = "Logout exitoso" };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error durante el logout");
-            return Task.FromResult(new AuthResponseDto
-            {
-                Success = false,
-                Message = "Error interno del servidor durante el logout"
-            });
+            return new AuthResponseDto { Success = false, Message = "Error interno del servidor durante el logout" };
         }
     }
 

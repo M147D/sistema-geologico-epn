@@ -41,11 +41,11 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
     }
 
     // 🔍 CONSULTAS BASICAS
-    public virtual async Task<ElementoGeologicoResponseDto> GetByIdAsync(int id, int usuarioId)
+    public virtual async Task<ElementoGeologicoResponseDto> GetByIdAsync(int id, int usuarioId, bool incluirFotosInactivas = false)
     {
         try
         {
-            var elemento = await _repository.GetByIdWithDetailsAsync(id);
+            var elemento = await _repository.GetByIdWithDetailsAsync(id, incluirFotosInactivas);
             if (elemento == null)
             {
                 return new ElementoGeologicoResponseDto
@@ -189,6 +189,10 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
                 Data = elementoDto
             };
         }
+        catch (ConflictoConcurrenciaException)
+        {
+            return new ElementoGeologicoResponseDto { Success = false, Message = ConflictoConcurrenciaException.Mensaje };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al actualizar {ElementType} con ID: {Id}", ElementTypeName, id);
@@ -218,6 +222,10 @@ public abstract class BaseElementoGeologicoService<T, TCreateDto, TUpdateDto> :
             await _repository.UpdateAsync(elemento);
 
             return true;
+        }
+        catch (ConflictoConcurrenciaException)
+        {
+            throw; // el controlador responde 409
         }
         catch (Exception ex)
         {

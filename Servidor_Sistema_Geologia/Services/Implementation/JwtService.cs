@@ -9,6 +9,9 @@ namespace Servidor_Sistema_Geologia.Services.Implementation;
 
 public class JwtService : IJwtService
 {
+    /// <summary>Claim con el SecurityStamp de Identity; Program.cs lo compara en cada petición.</summary>
+    public const string SecurityStampClaim = "sstamp";
+
     private readonly IConfiguration _configuration;
     private readonly ILogger<JwtService> _logger;
 
@@ -35,6 +38,7 @@ public class JwtService : IJwtService
                 new("EstadoActivo", usuario.EstadoActivo.ToString()),
                 new("EmailConfirmed", usuario.EmailConfirmed.ToString()),
                 new("FechaCreacion", usuario.FechaCreacion.ToString("yyyy-MM-dd")),
+                new(SecurityStampClaim, usuario.SecurityStamp ?? ""),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };

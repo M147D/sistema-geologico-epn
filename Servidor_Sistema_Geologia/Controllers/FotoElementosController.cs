@@ -37,7 +37,7 @@ public class FotoElementosController : ControllerBase
     {
         try
         {
-            var fotos = await _fotoService.GetByGaleriaIdAsync(galeriaId);
+            var fotos = await _fotoService.GetByGaleriaIdAsync(galeriaId, IsUserAdmin());
             return Ok(fotos);
         }
         catch (Exception ex)
@@ -59,6 +59,11 @@ public class FotoElementosController : ControllerBase
         try
         {
             bool isPremium = IsUserPremium();
+            // Política de borrado lógico ANTES de la caché: quien no es Admin no recibe fotos
+            // borradas ni de elementos borrados, aunque estén en caché (PEN-12).
+            if (!IsUserAdmin() && !await _fotoService.EsFotoVisibleAsync(id))
+                return NotFound("Imagen no encontrada");
+
             string cacheKey = $"foto_{id}_{(isPremium ? "clean" : "wm")}_{(thumb ? "thumb" : "full")}";
 
             if (_cache.TryGetValue(cacheKey, out byte[]? cached))
@@ -120,6 +125,9 @@ public class FotoElementosController : ControllerBase
             {
                 return BadRequest("Se requiere una imagen");
             }
+            // Tipo y tamaño en píxeles validados antes de guardar (PEN-12).
+            if (_imageProcessing.ValidarImagen(fotoDto.Imagen) is string errorImagen)
+                return BadRequest(errorImagen);
 
             var foto = await _fotoService.CreateAsync(fotoDto, galeriaId, usuarioId);
 
@@ -140,6 +148,10 @@ public class FotoElementosController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
+        }
+        catch (ConflictoConcurrenciaException ex)
+        {
+            return Conflict(ex.Message);
         }
         catch (Exception ex)
         {
@@ -170,6 +182,9 @@ public class FotoElementosController : ControllerBase
                 fotoDto.Imagen = memoryStream.ToArray();
             }
 
+            if (fotoDto.Imagen is { Length: > 0 } && _imageProcessing.ValidarImagen(fotoDto.Imagen) is string errorImagen)
+                return BadRequest(errorImagen);
+
             var foto = await _fotoService.UpdateAsync(id, fotoDto, usuarioId);
 
             // Crear respuesta simplificada
@@ -190,6 +205,10 @@ public class FotoElementosController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
+        }
+        catch (ConflictoConcurrenciaException ex)
+        {
+            return Conflict(ex.Message);
         }
         catch (Exception ex)
         {
@@ -219,6 +238,10 @@ public class FotoElementosController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
+        }
+        catch (ConflictoConcurrenciaException ex)
+        {
+            return Conflict(ex.Message);
         }
         catch (Exception ex)
         {
@@ -253,6 +276,9 @@ public class FotoElementosController : ControllerBase
 
             if (fotoDto.Imagen == null || fotoDto.Imagen.Length == 0)
                 return BadRequest("Se requiere una imagen");
+            // Tipo y tamaño en píxeles validados antes de guardar (PEN-12).
+            if (_imageProcessing.ValidarImagen(fotoDto.Imagen) is string errorImagen)
+                return BadRequest(errorImagen);
 
             var foto = await _fotoService.CreateAsync(fotoDto, galeriaId.Value, usuarioId);
 
@@ -294,6 +320,10 @@ public class FotoElementosController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(ex.Message);
+        }
+        catch (ConflictoConcurrenciaException ex)
+        {
+            return Conflict(ex.Message);
         }
         catch (Exception ex)
         {

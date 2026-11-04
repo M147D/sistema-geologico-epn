@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Servidor_Sistema_Geologia.DTO;
 using Servidor_Sistema_Geologia.DTO.ElementosGeologicos;
 using Servidor_Sistema_Geologia.Services.Interfaces;
@@ -97,15 +98,15 @@ public class ElementosGeologicosController : ControllerBase
             }
 
             // Intentamos obtener el elemento de cada servicio hasta encontrarlo
-            var fosilResult = await _fosilService.GetByIdAsync(id, usuarioId);
+            var fosilResult = await _fosilService.GetByIdAsync(id, usuarioId, User.IsInRole("Admin"));
             if (fosilResult.Success)
                 return Ok(new { success = true, data = fosilResult.Data });
 
-            var mineralResult = await _mineralService.GetByIdAsync(id, usuarioId);
+            var mineralResult = await _mineralService.GetByIdAsync(id, usuarioId, User.IsInRole("Admin"));
             if (mineralResult.Success)
                 return Ok(new { success = true, data = mineralResult.Data });
 
-            var rocaResult = await _rocaService.GetByIdAsync(id, usuarioId);
+            var rocaResult = await _rocaService.GetByIdAsync(id, usuarioId, User.IsInRole("Admin"));
             if (rocaResult.Success)
                 return Ok(new { success = true, data = rocaResult.Data });
 
@@ -395,6 +396,8 @@ public class ElementosGeologicosController : ControllerBase
             {
                 if (result.Message.Contains("no encontrado"))
                     return NotFound(result.Message);
+                if (result.Message == ConflictoConcurrenciaException.Mensaje)
+                    return Conflict(new { success = false, message = result.Message });
                 return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
@@ -425,6 +428,8 @@ public class ElementosGeologicosController : ControllerBase
             {
                 if (result.Message.Contains("no encontrado"))
                     return NotFound(result.Message);
+                if (result.Message == ConflictoConcurrenciaException.Mensaje)
+                    return Conflict(new { success = false, message = result.Message });
                 return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
@@ -455,6 +460,8 @@ public class ElementosGeologicosController : ControllerBase
             {
                 if (result.Message.Contains("no encontrado"))
                     return NotFound(result.Message);
+                if (result.Message == ConflictoConcurrenciaException.Mensaje)
+                    return Conflict(new { success = false, message = result.Message });
                 return BadRequest(new { success = false, message = result.Message, errors = result.Errors });
             }
 
@@ -496,6 +503,10 @@ public class ElementosGeologicosController : ControllerBase
 
             return NotFound("Elemento geológico no encontrado");
         }
+        catch (ConflictoConcurrenciaException ex)
+        {
+            return Conflict(new { success = false, message = ex.Message });
+        }
         catch (Exception ex)
         {
             return BadRequest($"Error al eliminar elemento geológico: {ex.Message}");
@@ -511,6 +522,7 @@ public class ElementosGeologicosController : ControllerBase
     /// Disponible para todos los roles autenticados.
     /// </summary>
     [HttpPost("{id}/solicitar-informe")]
+    [EnableRateLimiting(PoliticasLimite.Informe)]
     [Authorize]
     public async Task<ActionResult> SolicitarInformePetrografico(int id, [FromBody] SolicitudInformePetrograficoDto solicitudDto)
     {
@@ -525,6 +537,10 @@ public class ElementosGeologicosController : ControllerBase
                     errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
                 });
             }
+
+            var correoSolicitante = User.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrWhiteSpace(correoSolicitante))
+                return Unauthorized(new { success = false, message = "La sesión no tiene un correo asociado" });
 
             var result = await _elementoService.GetByIdWithDetailsAsync(id, 0);
             if (!result.Success || result.Data == null)
@@ -547,7 +563,8 @@ public class ElementosGeologicosController : ControllerBase
             };
 
             var enviado = await _emailService.EnviarSolicitudInformeAsync(
-                correoSolicitante:    solicitudDto.CorreoSolicitante,
+                // El solicitante es quien inició sesión, no lo que diga el cuerpo (PEN-12).
+                correoSolicitante:    correoSolicitante,
                 observaciones:        solicitudDto.Observaciones,
                 elementoId:           result.Data.Id,
                 elementoNombre:       result.Data.Nombre,

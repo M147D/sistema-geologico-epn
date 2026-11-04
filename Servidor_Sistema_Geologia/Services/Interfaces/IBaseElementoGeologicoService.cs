@@ -15,7 +15,8 @@ public interface IBaseElementoGeologicoService<T, TCreateDto, TUpdateDto>
     where TUpdateDto : UpdateElementoGeologicoBaseDto
 {
     // 🔍 CONSULTAS BASICAS
-    Task<ElementoGeologicoResponseDto> GetByIdAsync(int id, int usuarioId);
+    /// <param name="incluirFotosInactivas">Solo Admin: incluir fotos borradas en la galería.</param>
+    Task<ElementoGeologicoResponseDto> GetByIdAsync(int id, int usuarioId, bool incluirFotosInactivas = false);
     Task<PaginatedElementosGeologicosDto> GetAllAsync(ElementoGeologicoFilterDto filter);
     
     // ✏️ OPERACIONES CRUD

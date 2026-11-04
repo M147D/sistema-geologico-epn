@@ -12,6 +12,9 @@ public class AuthRepository : IAuthRepository
         _userManager = userManager;
     }
 
+    public Task<IdentityResult> RevocarSesionesAsync(Servidor_Sistema_Geologia.Usuario user)
+        => _userManager.UpdateSecurityStampAsync(user);
+
     public async Task<Servidor_Sistema_Geologia.Usuario?> FindByEmailAsync(string email)
         => await _userManager.FindByEmailAsync(email);
 

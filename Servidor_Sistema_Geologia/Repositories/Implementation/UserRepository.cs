@@ -122,16 +122,18 @@ public class UserRepository : IUserRepository
         return await _userManager.CreateAsync(user, password);
     }
 
+    // Toda edición administrativa renueva el sello de seguridad: las sesiones abiertas
+    // del usuario dejan de valer y debe volver a iniciar sesión (PEN-12).
     public async Task<IdentityResult> UpdateAsync(Usuario user)
     {
-        return await _userManager.UpdateAsync(user);
+        return await _userManager.UpdateSecurityStampAsync(user);
     }
 
     public async Task<IdentityResult> DeleteAsync(Usuario user)
     {
         // 🔥 SOFT DELETE: Desactivar usuario en lugar de eliminar físicamente
         user.EstadoActivo = false;
-        return await _userManager.UpdateAsync(user);
+        return await _userManager.UpdateSecurityStampAsync(user);
     }
 
 

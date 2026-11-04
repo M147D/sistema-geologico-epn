@@ -11,4 +11,6 @@ public interface IAuthRepository
     Task<bool> IsLockedOutAsync(Servidor_Sistema_Geologia.Usuario user);
     Task<IdentityResult> AccessFailedAsync(Servidor_Sistema_Geologia.Usuario user);
     Task<IdentityResult> ResetAccessFailedCountAsync(Servidor_Sistema_Geologia.Usuario user);
+    /// <summary>Renueva el sello de seguridad: invalida todos los tokens emitidos al usuario.</summary>
+    Task<IdentityResult> RevocarSesionesAsync(Servidor_Sistema_Geologia.Usuario user);
 }

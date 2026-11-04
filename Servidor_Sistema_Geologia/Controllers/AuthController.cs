@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Servidor_Sistema_Geologia.DTO.Auth;
 using Servidor_Sistema_Geologia.Services.Interfaces;
 using System.Security.Claims;
@@ -23,6 +24,7 @@ public class AuthController : ControllerBase
     /// Registra un nuevo usuario en el sistema
     /// </summary>
     [HttpPost("register")]
+    [EnableRateLimiting(PoliticasLimite.Auth)]
     public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto model)
     {
         if (!ModelState.IsValid)
@@ -49,6 +51,7 @@ public class AuthController : ControllerBase
     /// Autentica un usuario en el sistema
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting(PoliticasLimite.Auth)]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto model)
     {
         _logger.LogInformation("Solicitud de login para email: {Email}", model.Email);
@@ -83,7 +86,7 @@ public class AuthController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         _logger.LogInformation("Solicitud de logout para usuario: {UserId}", userId);
 
-        var resultado = await _authService.LogoutAsync();
+        var resultado = await _authService.LogoutAsync(userId);
 
         return Ok(resultado);
     }
