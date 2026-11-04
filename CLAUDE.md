@@ -36,6 +36,12 @@ All project documentation lives under `docs/`, and every document carries a stab
 | DEP-01 | [docs/despliegue/vps-docker.md](docs/despliegue/vps-docker.md) | Deploy to a VPS with Docker Compose and Caddy; update; tested backup and restore. Tested locally only. |
 | PS-01 | [docs/problemas-soluciones/marca-de-agua-solo-en-windows.md](docs/problemas-soluciones/marca-de-agua-solo-en-windows.md) | Watermark and thumbnails only worked on Windows; moved to SkiaSharp, fail-closed. Fixed. |
 | PS-02 | [docs/problemas-soluciones/dotnet-watch-hot-reload.md](docs/problemas-soluciones/dotnet-watch-hot-reload.md) | `dotnet watch` died in the dev container on a Hot Reload error; now `--no-hot-reload` + restart. Fixed. |
+| PS-03 | [docs/problemas-soluciones/sesion-no-revocada.md](docs/problemas-soluciones/sesion-no-revocada.md) | JWT kept working after revocation; now revalidated per request with SecurityStamp. Fixed. |
+| PS-04 | [docs/problemas-soluciones/regex-cuadratica.md](docs/problemas-soluciones/regex-cuadratica.md) | Quadratic pre-auth validation regex; now linear-time with an in-attribute length cap. Fixed. |
+| PS-05 | [docs/problemas-soluciones/abuso-sin-limites.md](docs/problemas-soluciones/abuso-sin-limites.md) | No rate limits (account lockout by third parties, unlimited report emails). Emails fixed; lockout mitigated. |
+| PS-06 | [docs/problemas-soluciones/borrado-logico-desigual.md](docs/problemas-soluciones/borrado-logico-desigual.md) | Soft-deleted photos and elements visible on some routes; one policy now. Fixed. |
+| PS-07 | [docs/problemas-soluciones/escrituras-concurrentes.md](docs/problemas-soluciones/escrituras-concurrentes.md) | Concurrent edit silently undid a soft delete; xmin token and 409 now. Fixed. |
+| PS-08 | [docs/problemas-soluciones/decodificacion-sin-limite.md](docs/problemas-soluciones/decodificacion-sin-limite.md) | Unbounded image decode and no file-type check; header validation now. Fixed. |
 | PEN-01 … | [docs/pendientes.md](docs/pendientes.md) | Pending improvements, listed below. |
 | REV-01 | [docs/revisiones/2026-11-03-sistema-completo.md](docs/revisiones/2026-11-03-sistema-completo.md) | Design review at `d30f189` (before Docker): 10 patterns, 14 findings (4 high, 7 medium, 3 low). |
 | REV-02 | [docs/revisiones/2026-11-03-cierre-rev01.md](docs/revisiones/2026-11-03-cierre-rev01.md) | Design review at `e3d2880` closing REV-01: P-02 applied, 13 of 14 REV-01 findings closed; open: GIS data (PEN-04) and two consistency findings tracked in PEN-12. |
@@ -57,11 +63,12 @@ Pending improvements (`docs/pendientes.md`; an item is never deleted when done �
 - PEN-09 — Catalog database engine: consolidated in PostgreSQL. Done 2026-11-03.
 - PEN-10 — Mandatory, explicit configuration at startup. Done 2026-11-03.
 - PEN-11 — Scheduled off-server backups. Pending.
-- PEN-12 — Fix the 2026-11-03 security audit findings (run 1: 2 medium, 4 low, 1 needs validation; run 2: 3 low; reports outside the repo). Pending.
+- PEN-12 — Fix the 2026-11-03 security audit findings. Done 2026-11-03 (PS-03 to PS-08; account lockout by third parties mitigated, not eliminated).
 
 Artifacts (`docs/artefactos.md`, code in `scripts/artefactos/`):
 
 - ART-01 — End-to-end smoke test against a running deployment (auth, roles, element + photo, watermark, GIS); reusable, writes test data.
+- ART-03 — Security regression for PEN-12 (revocation, regex, soft delete, images, report limits, concurrency, login rate limit); reusable, writes test data, exhausts the login limit of the caller IP for 1 minute.
 - ART-02 — API verification of the REV-01 closures (coordinates, country from province, atomic create, all-or-nothing batch); reusable, writes test data.
 
 Changes (`docs/control-cambios.md`):
@@ -70,5 +77,6 @@ Changes (`docs/control-cambios.md`):
 - CAM-02 — .NET 8 → 10 and Node 20 → 26; production: no.
 - CAM-03 — Catalog in PostgreSQL and Docker deployment; production: no (tested locally).
 - CAM-04 — REV-01 closure: layers, Ubicacion schema migration, atomic batch load; production: no.
+- CAM-05 — Security fixes (PEN-12) and xmin concurrency token migration; production: no.
 
 **Adding a document:** take the next free code in its category, put it in the title (`# CODE · Title`, `## LA-NN · Title`, `## PEN-NN · Title`, `## ART-NN · Title`, `# REV-NN · Title`, `## CAM-NN · Title`), add it to this index, and run `node scripts/check-docs.mjs`.

@@ -77,3 +77,49 @@ y los desactiva al final; quedan como filas inactivas y, si son nuevos, el país
 y las provincias. Se puede repetir.
 
 Archivo: [`scripts/artefactos/ART-02-verificacion-rev01.sh`](../scripts/artefactos/ART-02-verificacion-rev01.sh).
+
+## ART-03 · Regresión de seguridad (PEN-12)
+
+**Qué hace:** comprueba por la API que siguen corregidos los hallazgos de las
+auditorías de seguridad:
+
+- el token deja de valer al degradar al usuario, al cerrar sesión y al cambiar
+  la contraseña;
+- la regex de 64 KB se rechaza en milisegundos;
+- las fotos borradas no son visibles fuera de Admin (imagen, galería y
+  detalle);
+- se rechazan imágenes de más píxeles que el máximo y archivos que no son
+  imágenes;
+- el informe sobre un elemento borrado da 404, y el informe tiene límite de 3
+  por hora;
+- 15 rondas de PUT concurrente con DELETE no deshacen ningún borrado;
+- el login tiene límite por IP.
+
+**Cómo se ejecuta:**
+
+```bash
+ADMIN_EMAIL=admin@sistemageologico.local ADMIN_PASSWORD=SoloDesarrollo1 \
+  python3 -I scripts/artefactos/ART-03-regresion-seguridad.py http://127.0.0.1:5174
+```
+
+`INSECURE=1` acepta la CA interna de Caddy.
+
+**Entrada y salida:** la URL base y las credenciales del administrador. Imprime
+una línea por comprobación y termina con código 1 si alguna falla. Usa solo la
+biblioteca estándar de Python.
+
+**Origen:** PEN-12 y las corridas 1 y 2 de la auditoría (2026-11-03); commit
+`43a23aa`.
+
+**Estado:** reutilizable. Pasó el 2026-11-03 en desarrollo. La intercalación
+determinista PUT/DELETE se probó aparte con un `LOCK TABLE` (PS-07).
+
+**Riesgos:**
+
+- Escribe en la base: crea usuarios, elementos y fotos de prueba, y los
+  desactiva al final.
+- La última prueba agota a propósito el límite de login de la IP: después de
+  correrla, hay que esperar 1 minuto para volver a iniciar sesión desde esa IP.
+- No correrlo en producción salvo a propósito.
+
+Archivo: [`scripts/artefactos/ART-03-regresion-seguridad.py`](../scripts/artefactos/ART-03-regresion-seguridad.py).

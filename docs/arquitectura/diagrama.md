@@ -110,14 +110,15 @@ cliente-sistema-geologico/
 
 Todas las rutas cuelgan de `/api`. "Autenticado" = cualquier JWT válido.
 Errores de autenticación en JSON (`{ success:false, message, ... }`) con 401
-o 403; en producción, una excepción no controlada responde 500 con
+o 403; 429 al superar un límite de frecuencia y 409 si el registro cambió
+mientras se editaba; en producción, una excepción no controlada responde 500 con
 `{ success:false, message:"Error interno del servidor" }`.
 
 | Método | Ruta | Acceso | Qué hace |
 |---|---|---|---|
-| POST | `/auth/register` | público | Registra un usuario; el rol se fuerza a Free; devuelve JWT. |
-| POST | `/auth/login` | público | Devuelve JWT; bloquea 5 min tras 3 fallos. |
-| POST | `/auth/logout` | autenticado | Sin estado en el servidor: el cliente descarta el token. |
+| POST | `/auth/register` | público | Registra un usuario; el rol se fuerza a Free; devuelve JWT. Límite: 10 por minuto por IP (429). |
+| POST | `/auth/login` | público | Devuelve JWT; bloquea la cuenta 5 min tras 10 fallos. Límite: 10 por minuto por IP (429). |
+| POST | `/auth/logout` | autenticado | Renueva el `SecurityStamp`: invalida todos los tokens del usuario. |
 | GET | `/auth/me` | autenticado | Usuario del token. |
 | GET | `/users` | Admin | Lista paginada y filtrada. |
 | GET | `/users/{id}` | Admin | Detalle. |
@@ -134,7 +135,7 @@ o 403; en producción, una excepción no controlada responde 500 con
 | POST | `/elementos-geologicos/lote/fosiles`, `/minerales`, `/rocas` | Admin | Carga masiva `{ filas: [...] }`, de 1 a 2000 filas, todo o nada. Si el código ya existe en el mismo tipo, actualiza; si existe en otro tipo, crea con sufijo `.D{fila}`. Responde 200 con `{ creados, actualizados }` o 400 con `errores[{ fila, codigo, mensaje }]`. |
 | PUT | `/elementos-geologicos/{fosiles\|minerales\|rocas}/{id}` | Admin, Invitado | Edita. |
 | DELETE | `/elementos-geologicos/{id}` | Admin | Borrado lógico. |
-| POST | `/elementos-geologicos/{id}/solicitar-informe` | autenticado | Envía por correo la solicitud de informe petrográfico. |
+| POST | `/elementos-geologicos/{id}/solicitar-informe` | autenticado | Envía por correo la solicitud de informe petrográfico de un elemento activo. El solicitante es el correo de la sesión; se ignora `correoSolicitante`. Límite: 3 por hora por usuario y 50 por hora en total (429). |
 | GET | `/foto-elementos/galeria/{galeriaId}` | autenticado | Fotos de una galería. |
 | GET | `/foto-elementos/imagen/{id}` | autenticado | Imagen (`?thumb=true` → 300×200 como máximo); marca de agua salvo para Premium, Admin e Invitado. |
 | GET | `/foto-elementos/por-elemento/{elementoId}` | autenticado | Galería y metadatos de fotos. |
@@ -178,10 +179,29 @@ termina con 0 o 1 (lo usa el `HEALTHCHECK` de la imagen).
 Lo que hace el código; los hallazgos de la auditoría de seguridad van aparte.
 
 - **Autenticación:** JWT HS256 con clave obligatoria de 32 caracteres como
-  mínimo (la API no arranca sin ella); emisor y audiencia validados; 12 h de
-  vida; el rol viaja en el token.
-- **Contraseñas:** Identity (mínimo 6, dígito, minúscula y mayúscula); bloqueo
-  de 5 min tras 3 fallos. El superadmin solo se crea si hay contraseña
+  mínimo (la API no arranca sin ella). Emisor y audiencia validados; 12 h de
+  vida.
+  - El token lleva el rol y el `SecurityStamp`.
+  - En cada petición, `OnTokenValidated` lo rechaza si el usuario está
+    inactivo, cambió de rol o tiene otro sello.
+  - Editar o desactivar un usuario, cambiar su contraseña o cerrar sesión
+    renuevan el sello (PS-03).
+- **Contraseñas:** Identity (de 6 a 100 caracteres, con dígito, minúscula y
+  mayúscula); bloqueo de 5 min tras 10 fallos.
+- **Límites de frecuencia (PS-05):**
+  - login y registro: 10 por minuto por IP;
+  - `solicitar-informe`: 3 por hora por usuario y 50 por hora en total;
+  - se responde 429.
+  - La IP del cliente sale de `X-Forwarded-For` solo si viene de un proxy en
+    una red privada (Caddy).
+- **Validación de entrada:** `NoInjection` con regex de tiempo lineal y un tope
+  de 5000 caracteres (PS-04). Las imágenes se validan por formato (JPEG, PNG o
+  WebP) y por tamaño (12000 px por lado, 40 MP) al subir y antes de decodificar
+  (PS-08).
+- **Borrado lógico (PS-06):** fuera de Admin, ninguna ruta entrega fotos ni
+  elementos borrados.
+- **Concurrencia (PS-07):** token `xmin` en elementos y fotos; un conflicto
+  responde 409. El superadmin solo se crea si hay contraseña
   configurada, y la contraseña no se escribe en el log.
 - **Autorización:** `[Authorize(Roles=…)]` por endpoint.
 - **Fotos:** la marca de agua para Free se aplica en el servidor en cualquier

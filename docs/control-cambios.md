@@ -114,3 +114,39 @@ modelo.
 **Relacionados:** [REV-02](revisiones/2026-11-03-cierre-rev01.md),
 [REV-01](revisiones/2026-11-03-sistema-completo.md), PEN-05 a PEN-08,
 [DIA-03](diagramas/modelo-datos.md), ART-02.
+
+## CAM-05 · Correcciones de seguridad (PEN-12) y token de concurrencia
+
+**Fecha:** 2026-11-03.
+
+**Tipo:** migración.
+
+**Commit:** `43a23aa`.
+
+**Qué cambió y por qué:** el usuario pidió (2026-11-03) corregir los hallazgos
+de las dos corridas de la auditoría de seguridad.
+
+- Revalidación del JWT en cada petición y revocación con `SecurityStamp`
+  (PS-03).
+- Regex de tiempo lineal con tope de longitud (PS-04).
+- Límites de frecuencia y proxys de confianza (PS-05).
+- Una sola política de borrado lógico (PS-06).
+- Migración `TokenConcurrenciaXmin`: concurrencia optimista con `xmin` y
+  respuestas 409 (PS-07). No crea columnas.
+- Validación de imágenes y `mem_limit` para la API (PS-08).
+
+Cambios de contrato de la API:
+
+- Los tokens emitidos antes de este cambio dejan de valer, porque no tienen
+  `sstamp`: hay que volver a iniciar sesión.
+- El logout cierra todas las sesiones del usuario.
+- Se ignora `correoSolicitante` del informe.
+- Aparecen respuestas nuevas: 429 por límite de frecuencia y 409 por conflicto.
+
+Verificación: ART-01, ART-02 y ART-03 pasan, y la prueba determinista de PS-07
+dio 409.
+
+**Producción:** no (no hay producción).
+
+**Relacionados:** PS-03, PS-04, PS-05, PS-06, PS-07, PS-08, ART-03,
+[pendientes](pendientes.md).

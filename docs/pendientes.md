@@ -222,7 +222,12 @@ servidor. Al cerrarlo: DEP-01.
 
 ## PEN-12 · Corregir los hallazgos de la auditoría de seguridad del 2026-11-03
 
-**Estado:** pendiente (2026-11-03).
+**Estado:** hecho (2026-11-03), commit `43a23aa`; ver CAM-05 y ART-03.
+Todos los hallazgos quedan corregidos, con una excepción: el bloqueo de cuentas
+por terceros queda mitigado, no eliminado (PS-05). Cierres: PS-03 (sesión),
+PS-04 (regex), PS-05 (límites), PS-06 (borrado lógico, también REV-02 H-02),
+PS-07 (concurrencia, también REV-02 H-03) y PS-08 (imágenes; cierra el
+"por validar").
 
 **Situación actual:** auditoría con la skill `security-audit`, perfil `quick`
 (pasada parcial), sobre el commit `6c91245`. El informe vive fuera del repo,
